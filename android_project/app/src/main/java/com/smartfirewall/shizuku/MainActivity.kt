@@ -279,12 +279,22 @@ class MainActivity : ComponentActivity() {
         Shizuku.addRequestPermissionResultListener(shizukuPermListener)
         setContent {
             MaterialTheme(colorScheme = NetCordonColorScheme) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.systemBars),
-                    color = BG
-                ) { NetCordonApp() }
+                val showSplash = remember { mutableStateOf(true) }
+                // Full-screen root — no insets on splash layer
+                Box(modifier = Modifier.fillMaxSize().background(BG)) {
+                    // Main app behind splash (with system bar insets)
+                    if (!showSplash.value) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .windowInsetsPadding(WindowInsets.systemBars)
+                        ) { NetCordonApp() }
+                    }
+                    // Splash overlay: full-bleed, covers everything, no inset
+                    if (showSplash.value) {
+                        AnimatedSplashScreen(onFinish = { showSplash.value = false })
+                    }
+                }
             }
         }
     }
@@ -344,14 +354,6 @@ fun fetchInstalledApps(ctx: Context): List<AppInfo> {
 fun NetCordonApp() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-
-    /* ── Splash Screen ── */
-    var showSplash by remember { mutableStateOf(true) }
-
-    if (showSplash) {
-        AnimatedSplashScreen(onFinish = { showSplash = false })
-        return
-    }
 
     /* ── Permission live state ── */
     var shizukuOk  by remember { mutableStateOf(ShizukuManager.isShizukuAvailable() && ShizukuManager.hasShizukuPermission()) }
