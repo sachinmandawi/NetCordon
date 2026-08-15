@@ -29,13 +29,14 @@
 
 ## 🌟 Key Highlights
 
-* 🚀 **Zero Root & Zero VPN Overhead:** Operates directly over Android's native `netpolicy` service via **Shizuku (Wireless Debugging / ADB)**. No battery-draining VPN loopback!
-* 📶 **Independent Dual-Channel Control:** Granularly toggle **WiFi** and **Mobile Data** access per application with one tap.
-* 🔘 **NetGuard-Style Master Toggle:** Instantly pause or resume all firewall restrictions from the top bar master switch.
-* 🔒 **Screen Lock Auto-Shield:** Automatically cuts background traffic and suspends telemetry the moment your phone screen locks.
-* 🔕 **Notification Muter:** Auto-silences background push alerts and FCM wakeups for restricted applications.
-* 🎨 **Clean Minimalist Design:** 100% dark theme with high-res real app icons, smooth animated toggles, and zero clutter.
-* 📜 **Live Event Logger:** Real-time log inspector with color-coded tags (`V Verbose`, `D Debug`, `I Info`, `W Warn`, `E Error`).
+* 📴 **1. Background Traffic Freeze (Single-Tick ✓ Privacy):**
+  When a protected app (e.g., WhatsApp, Instagram) is minimized or your screen is locked, NetCordon cuts 100% of its background data. Senders only see a **Single Tick (✓)**, eliminating background telemetry, data drainage, and battery drain.
+
+* ⚡ **2. Foreground Auto-Resume (Instant On-Demand Access):**
+  The moment you open the app to use it, NetCordon immediately detects foreground usage and restores full internet connectivity seamlessly. As soon as you minimize or exit the app, network access is instantly frozen again.
+
+* 🔕 **3. Distraction-Free Notification Muting:**
+  Completely silences all background push alerts, sound notifications, pop-ups, and vibrations from restricted apps. Enjoy gaming, studying, or watching videos without unwanted message disruptions.
 
 ---
 
