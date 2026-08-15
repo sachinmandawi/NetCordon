@@ -18,7 +18,7 @@
   </p>
 
   <p align="center">
-    <a href="https://github.com/sachinmandawi/NetCordon/releases/download/v1.0.0/NetCordon_debug.apk">
+    <a href="https://github.com/sachinmandawi/NetCordon/releases/download/v1.0.0/NetCordon_v1.0.0.apk">
       <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_APK-v1.0.0_(Latest)-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
     </a>
   </p>
