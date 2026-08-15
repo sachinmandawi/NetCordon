@@ -132,62 +132,62 @@ fun NetCordonSwitch(
 /* ─── Animated Splash Screen (Native Jetpack Compose) ─── */
 @Composable
 fun AnimatedSplashScreen(onFinish: () -> Unit) {
-    var startAnimation by remember { mutableStateOf(false) }
-    var fadingOut by remember { mutableStateOf(false) }
-    val progress = remember { Animatable(0f) }
-
-    // 1. Logo Spring Physics
-    val logoScale by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0.7f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "logoScale"
-    )
-
-    // 2. Title Staggered Slide & Fade
-    val titleAlpha by animateFloatAsState(
-        targetValue = if (fadingOut) 0f else if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = if (fadingOut) 300 else 650, delayMillis = if (fadingOut) 0 else 120),
-        label = "titleAlpha"
-    )
-    val titleOffsetY by animateFloatAsState(
-        targetValue = if (startAnimation) 0f else 14f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
-        label = "titleOffsetY"
-    )
-
-    // 3. Subtitle Staggered Fade
-    val subAlpha by animateFloatAsState(
-        targetValue = if (fadingOut) 0f else if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = if (fadingOut) 250 else 700, delayMillis = if (fadingOut) 0 else 240),
-        label = "subAlpha"
-    )
-
-    // 4. Overall Container Fade & Scale
-    val containerAlpha by animateFloatAsState(
-        targetValue = if (fadingOut) 0f else 1f,
-        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
-        label = "containerAlpha"
-    )
-    val containerScale by animateFloatAsState(
-        targetValue = if (fadingOut) 1.02f else 1f,
-        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
-        label = "containerScale"
-    )
+    val logoScale = remember { Animatable(0.7f) }
+    val titleAlpha = remember { Animatable(0f) }
+    val titleOffsetY = remember { Animatable(18f) }
+    val subAlpha = remember { Animatable(0f) }
+    val progressBar = remember { Animatable(0f) }
+    val containerAlpha = remember { Animatable(1f) }
+    val containerScale = remember { Animatable(1f) }
 
     LaunchedEffect(Unit) {
-        startAnimation = true
+        // 1. Spring scale logo immediately
         launch {
-            progress.animateTo(
+            logoScale.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 2400, easing = FastOutSlowInEasing)
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
             )
         }
+
+        // 2. Title fade and slide up
+        launch {
+            delay(120)
+            titleAlpha.animateTo(1f, tween(600))
+        }
+        launch {
+            delay(120)
+            titleOffsetY.animateTo(0f, spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow))
+        }
+
+        // 3. Subtitle fade
+        launch {
+            delay(240)
+            subAlpha.animateTo(1f, tween(600))
+        }
+
+        // 4. Progress bar fill smoothly across 2.4s
+        launch {
+            delay(80)
+            progressBar.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 2400, easing = LinearEasing)
+            )
+        }
+
+        // Hold on screen for full 2.8s
         delay(2800)
-        fadingOut = true
-        delay(480)
+
+        // 5. Exit fade & scale transition
+        launch {
+            containerAlpha.animateTo(0f, tween(450, easing = FastOutSlowInEasing))
+        }
+        launch {
+            containerScale.animateTo(1.03f, tween(450, easing = FastOutSlowInEasing))
+        }
+        delay(450)
         onFinish()
     }
 
@@ -196,9 +196,9 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
             .fillMaxSize()
             .background(BG)
             .graphicsLayer {
-                alpha = containerAlpha
-                scaleX = containerScale
-                scaleY = containerScale
+                alpha = containerAlpha.value
+                scaleX = containerScale.value
+                scaleY = containerScale.value
             },
         contentAlignment = Alignment.Center
     ) {
@@ -213,8 +213,8 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
                 modifier = Modifier
                     .size(88.dp)
                     .graphicsLayer {
-                        scaleX = logoScale
-                        scaleY = logoScale
+                        scaleX = logoScale.value
+                        scaleY = logoScale.value
                     }
                     .clip(RoundedCornerShape(24.dp))
             )
@@ -229,8 +229,8 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.5.sp,
                 modifier = Modifier.graphicsLayer {
-                    alpha = titleAlpha
-                    translationY = titleOffsetY
+                    alpha = titleAlpha.value
+                    translationY = titleOffsetY.value
                 }
             )
 
@@ -243,7 +243,7 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
                 fontSize = 13.sp,
                 letterSpacing = 0.2.sp,
                 modifier = Modifier.graphicsLayer {
-                    alpha = subAlpha
+                    alpha = subAlpha.value
                 }
             )
 
@@ -256,12 +256,12 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(Color(0xFF262626))
-                    .graphicsLayer { alpha = subAlpha }
+                    .graphicsLayer { alpha = subAlpha.value }
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width((140 * progress.value).dp)
+                        .width((140 * progressBar.value).dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(Green)
                 )
