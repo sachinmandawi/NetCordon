@@ -134,6 +134,7 @@ fun NetCordonSwitch(
 fun AnimatedSplashScreen(onFinish: () -> Unit) {
     var startAnimation by remember { mutableStateOf(false) }
     var fadingOut by remember { mutableStateOf(false) }
+    val progress = remember { Animatable(0f) }
 
     val logoScale by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0.65f,
@@ -150,14 +151,14 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
         label = "contentAlpha"
     )
 
-    val progressAnim by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
-        label = "progressAnim"
-    )
-
     LaunchedEffect(Unit) {
         startAnimation = true
+        launch {
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 2400, easing = LinearOutSlowInEasing)
+            )
+        }
         delay(2800)
         fadingOut = true
         delay(500)
@@ -222,7 +223,7 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .fillMaxWidth(progressAnim)
+                        .width((140 * progress.value).dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(Green)
                 )

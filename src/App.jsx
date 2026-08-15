@@ -111,8 +111,20 @@ function Toolbar({ title, onBack, right }) {
 ═══════════════════════════ */
 function SplashScreen({ onFinish }) {
   const [fadingOut, setFadingOut] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    // 60FPS continuous smooth progress bar
+    const startTime = Date.now();
+    const duration = 2400; // 2.4s to fill
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / duration) * 100);
+      setProgress(pct);
+      if (pct >= 100) clearInterval(timer);
+    }, 16);
+
     // Start exit transition after 2.8s
     const t1 = setTimeout(() => {
       setFadingOut(true);
@@ -124,6 +136,7 @@ function SplashScreen({ onFinish }) {
     }, 3300);
 
     return () => {
+      clearInterval(timer);
       clearTimeout(t1);
       clearTimeout(t2);
     };
@@ -194,7 +207,7 @@ function SplashScreen({ onFinish }) {
           Intelligent App Firewall & Shield
         </p>
 
-        {/* Minimal Progress Indicator */}
+        {/* Dynamic 60FPS Progress Bar */}
         <div
           style={{
             width: 140,
@@ -202,16 +215,16 @@ function SplashScreen({ onFinish }) {
             borderRadius: 2,
             background: 'rgba(255,255,255,0.08)',
             overflow: 'hidden',
-            position: 'relative',
-            animation: 'splashSubFade 0.6s ease 0.55s both'
+            position: 'relative'
           }}
         >
           <div
             style={{
+              width: `${progress}%`,
               height: '100%',
               borderRadius: 2,
               background: '#4caf50',
-              animation: 'splashBarProgress 2.2s cubic-bezier(0.4, 0, 0.2, 1) 0.25s both'
+              transition: 'width 0.03s linear'
             }}
           />
         </div>
