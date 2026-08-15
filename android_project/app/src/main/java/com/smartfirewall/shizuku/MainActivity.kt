@@ -136,8 +136,9 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
     var fadingOut by remember { mutableStateOf(false) }
     val progress = remember { Animatable(0f) }
 
+    // 1. Logo Spring Physics
     val logoScale by animateFloatAsState(
-        targetValue = if (startAnimation) 1f else 0.65f,
+        targetValue = if (startAnimation) 1f else 0.7f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
@@ -145,10 +146,35 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
         label = "logoScale"
     )
 
-    val contentAlpha by animateFloatAsState(
+    // 2. Title Staggered Slide & Fade
+    val titleAlpha by animateFloatAsState(
         targetValue = if (fadingOut) 0f else if (startAnimation) 1f else 0f,
-        animationSpec = tween(durationMillis = if (fadingOut) 450 else 700),
-        label = "contentAlpha"
+        animationSpec = tween(durationMillis = if (fadingOut) 300 else 650, delayMillis = if (fadingOut) 0 else 120),
+        label = "titleAlpha"
+    )
+    val titleOffsetY by animateFloatAsState(
+        targetValue = if (startAnimation) 0f else 14f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "titleOffsetY"
+    )
+
+    // 3. Subtitle Staggered Fade
+    val subAlpha by animateFloatAsState(
+        targetValue = if (fadingOut) 0f else if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = if (fadingOut) 250 else 700, delayMillis = if (fadingOut) 0 else 240),
+        label = "subAlpha"
+    )
+
+    // 4. Overall Container Fade & Scale
+    val containerAlpha by animateFloatAsState(
+        targetValue = if (fadingOut) 0f else 1f,
+        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        label = "containerAlpha"
+    )
+    val containerScale by animateFloatAsState(
+        targetValue = if (fadingOut) 1.02f else 1f,
+        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        label = "containerScale"
     )
 
     LaunchedEffect(Unit) {
@@ -156,12 +182,12 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
         launch {
             progress.animateTo(
                 targetValue = 1f,
-                animationSpec = tween(durationMillis = 2400, easing = LinearOutSlowInEasing)
+                animationSpec = tween(durationMillis = 2400, easing = FastOutSlowInEasing)
             )
         }
         delay(2800)
         fadingOut = true
-        delay(500)
+        delay(480)
         onFinish()
     }
 
@@ -169,14 +195,18 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(BG)
-            .graphicsLayer { alpha = contentAlpha },
+            .graphicsLayer {
+                alpha = containerAlpha
+                scaleX = containerScale
+                scaleY = containerScale
+            },
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Flat App Logo (Zero Glow)
+            // Flat App Logo (Spring Scale)
             Image(
                 painter = painterResource(id = R.drawable.ic_app_logo),
                 contentDescription = "NetCordon",
@@ -191,34 +221,42 @@ fun AnimatedSplashScreen(onFinish: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
 
-            // App Title
+            // App Title (Slide Up & Fade)
             Text(
                 text = "NetCordon",
                 color = Color(0xFFF0F0F0),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.graphicsLayer {
+                    alpha = titleAlpha
+                    translationY = titleOffsetY
+                }
             )
 
             Spacer(Modifier.height(6.dp))
 
-            // Subtitle
+            // Subtitle (Staggered Fade)
             Text(
                 text = "Intelligent App Firewall & Shield",
                 color = Dim,
                 fontSize = 13.sp,
-                letterSpacing = 0.2.sp
+                letterSpacing = 0.2.sp,
+                modifier = Modifier.graphicsLayer {
+                    alpha = subAlpha
+                }
             )
 
             Spacer(Modifier.height(28.dp))
 
-            // Minimal Progress Bar
+            // Smooth Progress Bar
             Box(
                 modifier = Modifier
                     .width(140.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(Color(0xFF262626))
+                    .graphicsLayer { alpha = subAlpha }
             ) {
                 Box(
                     modifier = Modifier
