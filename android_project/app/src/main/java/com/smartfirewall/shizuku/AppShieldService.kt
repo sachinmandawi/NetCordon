@@ -46,9 +46,19 @@ class AppShieldService : Service() {
                     if (PrefsManager.isScreenOffShield(this@AppShieldService)) {
                         Log.d(TAG, "Screen OFF detected: Enforcing strict lockdown on all shielded apps")
                         val blockNotifs = PrefsManager.isBlockNotifications(this@AppShieldService)
+                        val savedWifi = PrefsManager.getWifiBlockedPackages(this@AppShieldService)
+                        val savedData = PrefsManager.getDataBlockedPackages(this@AppShieldService)
                         for (pkg in shieldedPackages) {
                             val uid = packageUidMap[pkg] ?: continue
-                            ShizukuManager.setAppNetworkAccess(pkg, uid, block = true, blockNotifications = blockNotifs)
+                            val blockWifi = savedWifi.contains(pkg)
+                            val blockData = savedData.contains(pkg)
+                            ShizukuManager.setAppNetworkAccess(
+                                packageName = pkg,
+                                uid = uid,
+                                blockWifi = blockWifi,
+                                blockData = blockData,
+                                blockNotifications = blockNotifs
+                            )
                         }
                     }
                 }
@@ -117,12 +127,23 @@ class AppShieldService : Service() {
                 loadPersistedState()
             }
 
-            // Immediately enforce restrictions
+            // Immediately enforce granular restrictions
             val currentForeground = getForegroundPackageName()
             val blockNotifs = PrefsManager.isBlockNotifications(this)
+            val savedWifi = PrefsManager.getWifiBlockedPackages(this)
+            val savedData = PrefsManager.getDataBlockedPackages(this)
+
             for ((pkg, uid) in packageUidMap) {
-                val shouldBlock = (pkg != currentForeground)
-                ShizukuManager.setAppNetworkAccess(pkg, uid, block = shouldBlock, blockNotifications = blockNotifs)
+                val isForeground = (pkg == currentForeground)
+                val blockWifi = !isForeground && savedWifi.contains(pkg)
+                val blockData = !isForeground && savedData.contains(pkg)
+                ShizukuManager.setAppNetworkAccess(
+                    packageName = pkg,
+                    uid = uid,
+                    blockWifi = blockWifi,
+                    blockData = blockData,
+                    blockNotifications = if (isForeground) false else blockNotifs
+                )
             }
 
             if (!isRunning) {
@@ -145,11 +166,23 @@ class AppShieldService : Service() {
 
     private fun onForegroundAppChanged(foregroundPackage: String) {
         val blockNotifs = PrefsManager.isBlockNotifications(this)
+        val savedWifi = PrefsManager.getWifiBlockedPackages(this)
+        val savedData = PrefsManager.getDataBlockedPackages(this)
+
         for (pkg in shieldedPackages) {
             val uid = packageUidMap[pkg] ?: continue
-            val shouldBlock = (pkg != foregroundPackage)
-            ShizukuManager.setAppNetworkAccess(pkg, uid, block = shouldBlock, blockNotifications = blockNotifs)
-            Log.d(TAG, "App: $pkg (UID: $uid) -> ${if (shouldBlock) "BLOCKED (Single Tick + Silent)" else "ALLOWED (Foreground Active)"}")
+            val isForeground = (pkg == foregroundPackage)
+            val blockWifi = !isForeground && savedWifi.contains(pkg)
+            val blockData = !isForeground && savedData.contains(pkg)
+
+            ShizukuManager.setAppNetworkAccess(
+                packageName = pkg,
+                uid = uid,
+                blockWifi = blockWifi,
+                blockData = blockData,
+                blockNotifications = if (isForeground) false else blockNotifs
+            )
+            Log.d(TAG, "App: $pkg (UID: $uid) -> ${if (isForeground) "ALLOWED (Foreground Active)" else "BLOCKED (WiFi: $blockWifi, Data: $blockData)"}")
         }
     }
 
@@ -181,7 +214,13 @@ class AppShieldService : Service() {
         handler.removeCallbacks(checkForegroundRunnable)
         // Reset all policies when service stops
         for ((pkg, uid) in packageUidMap) {
-            ShizukuManager.setAppNetworkAccess(pkg, uid, block = false)
+            ShizukuManager.setAppNetworkAccess(
+                packageName = pkg,
+                uid = uid,
+                blockWifi = false,
+                blockData = false,
+                blockNotifications = false
+            )
         }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

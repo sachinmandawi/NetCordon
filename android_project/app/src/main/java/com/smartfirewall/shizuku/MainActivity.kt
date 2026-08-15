@@ -577,13 +577,18 @@ fun NetCordonApp() {
                 apps = nextApps
                 val target = nextApps.firstOrNull { it.packageName == id }
                 if (target != null) {
-                    val isBlocked = target.wifiBlocked || target.dataBlocked
                     if (target.wifiBlocked) {
                         pushLog("${timestamp()}  W  NetPol: ${target.appName} WiFi -> BLOCKED (\\)")
                     } else {
                         pushLog("${timestamp()}  I  NetPol: ${target.appName} WiFi -> ALLOWED")
                     }
-                    ShizukuManager.setAppNetworkAccess(target.packageName, target.uid, isBlocked, blockNotifications = blockNotifs)
+                    ShizukuManager.setAppNetworkAccess(
+                        packageName = target.packageName,
+                        uid = target.uid,
+                        blockWifi = target.wifiBlocked,
+                        blockData = target.dataBlocked,
+                        blockNotifications = blockNotifs
+                    )
                 }
                 syncService(nextApps)
             },
@@ -592,13 +597,18 @@ fun NetCordonApp() {
                 apps = nextApps
                 val target = nextApps.firstOrNull { it.packageName == id }
                 if (target != null) {
-                    val isBlocked = target.wifiBlocked || target.dataBlocked
                     if (target.dataBlocked) {
                         pushLog("${timestamp()}  W  NetPol: ${target.appName} Mobile Data -> BLOCKED (\\)")
                     } else {
                         pushLog("${timestamp()}  I  NetPol: ${target.appName} Mobile Data -> ALLOWED")
                     }
-                    ShizukuManager.setAppNetworkAccess(target.packageName, target.uid, isBlocked, blockNotifications = blockNotifs)
+                    ShizukuManager.setAppNetworkAccess(
+                        packageName = target.packageName,
+                        uid = target.uid,
+                        blockWifi = target.wifiBlocked,
+                        blockData = target.dataBlocked,
+                        blockNotifications = blockNotifs
+                    )
                 }
                 syncService(nextApps)
             }

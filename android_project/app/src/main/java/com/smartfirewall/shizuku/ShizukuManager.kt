@@ -82,43 +82,56 @@ object ShizukuManager {
 
     /**
      * Complete multi-layer background & notification restriction:
-     * 1. AppOps RUN_IN_BACKGROUND + RUN_ANY_IN_BACKGROUND -> ignore
-     * 2. AppOps WAKE_LOCK -> ignore
-     * 3. Standby bucket -> restricted
-     * 4. NetPolicy -> restrict-background-blacklist & uid-policy 1
-     * 5. Notification blocking -> AppOps POST_NOTIFICATION ignore & ACCESS_NOTIFICATIONS ignore & pm revoke
+     * - Granular independent WiFi and Mobile Data blocking via NetPolicy & AppOps
+     * - Standby bucket restriction
+     * - Distraction-free Notification muting
      */
-    fun setAppNetworkAccess(packageName: String, uid: Int, block: Boolean, blockNotifications: Boolean = true): Boolean {
-        val commands = if (block) {
-            val list = mutableListOf(
-                "cmd appops set $packageName RUN_IN_BACKGROUND ignore",
-                "cmd appops set $packageName RUN_ANY_IN_BACKGROUND ignore",
-                "cmd appops set $packageName WAKE_LOCK ignore",
-                "am set-standby-bucket $packageName restricted",
-                "cmd netpolicy add restrict-background-blacklist $uid",
-                "cmd netpolicy set uid-policy $uid 1",
-                "cmd netpolicy add restrict-background $packageName",
-                "cmd deviceidle whitelist -$packageName"
-            )
-            if (blockNotifications) {
-                list.add("cmd appops set $packageName POST_NOTIFICATION ignore")
-                list.add("cmd appops set $packageName ACCESS_NOTIFICATIONS ignore")
-                list.add("pm revoke $packageName android.permission.POST_NOTIFICATIONS")
+    fun setAppNetworkAccess(
+        packageName: String,
+        uid: Int,
+        blockWifi: Boolean = false,
+        blockData: Boolean = false,
+        blockNotifications: Boolean = true
+    ): Boolean {
+        val isBlocked = blockWifi || blockData
+        val commands = mutableListOf<String>()
+
+        if (isBlocked) {
+            // Background execution lockdown & Doze
+            commands.add("cmd appops set $packageName RUN_IN_BACKGROUND ignore")
+            commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND ignore")
+            commands.add("cmd appops set $packageName WAKE_LOCK ignore")
+            commands.add("am set-standby-bucket $packageName restricted")
+            commands.add("cmd deviceidle whitelist -$packageName")
+
+            // Dual-Channel NetPolicy Rules
+            if (blockData) {
+                commands.add("cmd netpolicy add restrict-background-blacklist $uid")
+                commands.add("cmd netpolicy set uid-policy $uid 1")
             }
-            list
+            if (blockWifi) {
+                commands.add("cmd netpolicy add restrict-background $packageName")
+                commands.add("cmd netpolicy add restrict-background-blacklist $uid")
+            }
+
+            // Notification Muter
+            if (blockNotifications) {
+                commands.add("cmd appops set $packageName POST_NOTIFICATION ignore")
+                commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS ignore")
+                commands.add("pm revoke $packageName android.permission.POST_NOTIFICATIONS")
+            }
         } else {
-            listOf(
-                "cmd appops set $packageName RUN_IN_BACKGROUND allow",
-                "cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow",
-                "cmd appops set $packageName WAKE_LOCK allow",
-                "cmd appops set $packageName POST_NOTIFICATION allow",
-                "cmd appops set $packageName ACCESS_NOTIFICATIONS allow",
-                "pm grant $packageName android.permission.POST_NOTIFICATIONS",
-                "am set-standby-bucket $packageName active",
-                "cmd netpolicy remove restrict-background-blacklist $uid",
-                "cmd netpolicy set uid-policy $uid 0",
-                "cmd netpolicy remove restrict-background $packageName"
-            )
+            // Restore full network connectivity and notifications
+            commands.add("cmd appops set $packageName RUN_IN_BACKGROUND allow")
+            commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow")
+            commands.add("cmd appops set $packageName WAKE_LOCK allow")
+            commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
+            commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS allow")
+            commands.add("pm grant $packageName android.permission.POST_NOTIFICATIONS")
+            commands.add("am set-standby-bucket $packageName active")
+            commands.add("cmd netpolicy remove restrict-background-blacklist $uid")
+            commands.add("cmd netpolicy set uid-policy $uid 0")
+            commands.add("cmd netpolicy remove restrict-background $packageName")
         }
 
         val combined = commands.joinToString("; ")
