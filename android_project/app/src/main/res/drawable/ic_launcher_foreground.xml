@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.65"
+        android:scaleY="0.65"
+        android:translateX="18.9"
+        android:translateY="18.9">
+        <!-- Top WiFi Arc -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:pathData="M24,34 A42.4,42.4 0 0,1 84,34" />
+        <!-- Mid WiFi Arc -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:pathData="M32,45 A31.1,31.1 0 0,1 76,45" />
+        <!-- Low WiFi Arc -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:pathData="M40,56 A19.8,19.8 0 0,1 68,56" />
+        <!-- Bottom barred circle -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,67 A7.5,7.5 0 1,0 54,82 A7.5,7.5 0 1,0 54,67 Z" />
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FF6060"
+            android:strokeWidth="2.4"
+            android:strokeLineCap="round"
+            android:pathData="M48.7,79.8 L59.3,69.2" />
+    </group>
+</vector>

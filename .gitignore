@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor & System
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Android Build artifacts
+android_project/.gradle/
+android_project/app/build/
+android_project/build/
+android_project/local.properties
+android_project/.idea/
+android_project/**/*.iml
+
+# Sensitive local deploy scripts
+deploy_github.ps1
+upload_release.ps1
