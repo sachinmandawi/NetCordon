@@ -13,8 +13,8 @@
   </p>
 
   <p align="center">
-    <b>NetCordon</b> is a modern, lightweight, rootless Android firewall built with <b>Jetpack Compose</b>.<br/>
-    Take complete control of per-app internet access across <b>WiFi</b> and <b>Mobile Data</b> without creating VPN tunnels or root permissions.
+    <b>NetCordon</b> is a modern, rootless Android firewall built with <b>Jetpack Compose</b>.<br/>
+    Take complete control of background network traffic, foreground app states, and push alerts without VPN tunnels or root access.
   </p>
 
   <p align="center">
@@ -27,32 +27,28 @@
 
 ---
 
-## 🌟 Key Highlights
+## 🌟 The 3 Core Pillars of NetCordon
 
-* 📴 **1. Background Traffic Freeze (Single-Tick ✓ Privacy):**
-  When a protected app (e.g., WhatsApp, Instagram) is minimized or your screen is locked, NetCordon cuts 100% of its background data. Senders only see a **Single Tick (✓)**, eliminating background telemetry, data drainage, and battery drain.
+NetCordon is designed around three powerful, automated privacy and network management pillars:
 
-* ⚡ **2. Foreground Auto-Resume (Instant On-Demand Access):**
-  The moment you open the app to use it, NetCordon immediately detects foreground usage and restores full internet connectivity seamlessly. As soon as you minimize or exit the app, network access is instantly frozen again.
-
-* 🔕 **3. Distraction-Free Notification Muting:**
-  Completely silences all background push alerts, sound notifications, pop-ups, and vibrations from restricted apps. Enjoy gaming, studying, or watching videos without unwanted message disruptions.
+### 📴 1. Background Traffic Freeze (Single-Tick ✓ Privacy)
+* **What it does:** The instant a restricted app (such as **WhatsApp**, **Instagram**, or **Telegram**) is minimized, closed, or your screen is locked, NetCordon cuts 100% of its background internet access.
+* **Real-World Experience:** Senders see only a **Single Tick (✓)** on sent messages because the app cannot establish background connections.
+* **Benefits:** Complete peace of mind, zero background telemetry, and massive mobile data & battery savings.
 
 ---
 
-## 📸 Overview & Flow
+### ⚡ 2. Foreground Auto-Resume (Seamless On-Demand Access)
+* **What it does:** The exact moment you actively open a protected app, NetCordon automatically detects foreground activity and instantly restores full internet access.
+* **Real-World Experience:** You can chat, browse, or call normally without touching any firewall settings. As soon as you exit or minimize the app, network access is immediately frozen again.
+* **Benefits:** Zero manual toggling — internet works on-demand only when you are actively using the app.
 
-```
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│  Shizuku Binder │ ───> │ NetCordon Core  │ ───> │ Android Kernel  │
-│  (ADB Bridge)   │       │ Policy Engine   │       │   (netpolicy)   │
-└─────────────────┘       └─────────────────┘       └─────────────────┘
-                                   │
-              ┌────────────────────┴────────────────────┐
-              ▼                                         ▼
-   📶 Per-App WiFi Firewall                  📊 Mobile Data Firewall
-   (REJECT_METERED / UID block)              (REJECT_ALL / Background Cut)
-```
+---
+
+### 🔕 3. Distraction-Free Notification Muting (Zero Popups & Vibrations)
+* **What it does:** Completely suppresses and silences all background push notifications, heads-up popups, vibration alerts, and ringtones from restricted apps.
+* **Real-World Experience:** No unexpected message popups or vibrating alerts while you are playing competitive games, watching movies, studying, or attending meetings.
+* **Benefits:** 100% focused, distraction-free smartphone experience.
 
 ---
 
@@ -62,11 +58,11 @@
 * Android device running **Android 8.0 (Oreo) or higher** (Android 8.0 - 15+ supported).
 * [**Shizuku App**](https://shizuku.rikka.app/) installed and activated via **Wireless Debugging** or **ADB PC**.
 
-### 2. Installation
+### 2. Installation & Usage
 1. Download the latest APK from the [**Releases Page**](https://github.com/sachinmandawi/NetCordon/releases).
 2. Install the APK on your device.
-3. Launch NetCordon, grant **Shizuku permission**, and tap **"Continue to NetCordon"**.
-4. Tap the **WiFi** or **Data** icon next to any app to instantly restrict or allow its network access!
+3. Launch NetCordon, grant **Shizuku & Usage Access permissions**, and tap **"Continue to NetCordon"**.
+4. Tap the **WiFi** or **Data** icon next to any app to activate background freezing and notification protection!
 
 ---
 
@@ -74,7 +70,7 @@
 
 * **Language:** 100% Kotlin
 * **UI Framework:** Android Jetpack Compose (Material 3 Dark Palette)
-* **Privilege Layer:** Shizuku API (Rikka Binder Service)
+* **Privilege Layer:** Shizuku API (Rikka Binder Service — Zero Root / Zero VPN)
 * **Background Engine:** Android Foreground Service with BroadcastReceivers (`SCREEN_OFF`, `USER_PRESENT`, `BOOT_COMPLETED`)
 * **Persistence:** Android SharedPreferences (`PrefsManager`)
 
