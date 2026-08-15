@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
+import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -127,9 +129,107 @@ fun NetCordonSwitch(
     }
 }
 
-/* ─────────────────────────────────────────
-   MAIN ACTIVITY
-───────────────────────────────────────── */
+/* ─── Animated Splash Screen (Native Jetpack Compose) ─── */
+@Composable
+fun AnimatedSplashScreen(onFinish: () -> Unit) {
+    var startAnimation by remember { mutableStateOf(false) }
+    var fadingOut by remember { mutableStateOf(false) }
+
+    val logoScale by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0.65f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "logoScale"
+    )
+
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (fadingOut) 0f else if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = if (fadingOut) 450 else 700),
+        label = "contentAlpha"
+    )
+
+    val progressAnim by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 2200, easing = FastOutSlowInEasing),
+        label = "progressAnim"
+    )
+
+    LaunchedEffect(Unit) {
+        startAnimation = true
+        delay(2800)
+        fadingOut = true
+        delay(500)
+        onFinish()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BG)
+            .graphicsLayer { alpha = contentAlpha },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Flat App Logo (Zero Glow)
+            Image(
+                painter = painterResource(id = R.drawable.ic_app_logo),
+                contentDescription = "NetCordon",
+                modifier = Modifier
+                    .size(88.dp)
+                    .graphicsLayer {
+                        scaleX = logoScale
+                        scaleY = logoScale
+                    }
+                    .clip(RoundedCornerShape(24.dp))
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // App Title
+            Text(
+                text = "NetCordon",
+                color = Color(0xFFF0F0F0),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            // Subtitle
+            Text(
+                text = "Intelligent App Firewall & Shield",
+                color = Dim,
+                fontSize = 13.sp,
+                letterSpacing = 0.2.sp
+            )
+
+            Spacer(Modifier.height(28.dp))
+
+            // Minimal Progress Bar
+            Box(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color(0xFF262626))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progressAnim)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Green)
+                )
+            }
+        }
+    }
+}
 class MainActivity : ComponentActivity() {
 
     private val shizukuPermListener = Shizuku.OnRequestPermissionResultListener { _, _ -> }
@@ -205,6 +305,14 @@ fun fetchInstalledApps(ctx: Context): List<AppInfo> {
 fun NetCordonApp() {
     val ctx = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    /* ── Splash Screen ── */
+    var showSplash by remember { mutableStateOf(true) }
+
+    if (showSplash) {
+        AnimatedSplashScreen(onFinish = { showSplash = false })
+        return
+    }
 
     /* ── Permission live state ── */
     var shizukuOk  by remember { mutableStateOf(ShizukuManager.isShizukuAvailable() && ShizukuManager.hasShizukuPermission()) }
