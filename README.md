@@ -7,7 +7,7 @@
   **Zero Root · Zero VPN · Powered by Shizuku API**
 
   <p align="center">
-    <a href="https://github.com/sachinmandawi/NetCordon/releases/latest"><img src="https://img.shields.io/badge/Release-v1.0.0-4CAF50?style=for-the-badge&logo=android&logoColor=white" alt="Release" /></a>
+    <a href="https://github.com/sachinmandawi/NetCordon"><img src="https://img.shields.io/badge/Release-v1.0.0-4CAF50?style=for-the-badge&logo=android&logoColor=white" alt="Release" /></a>
     <a href="https://github.com/sachinmandawi/NetCordon/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-2196F3?style=for-the-badge" alt="License" /></a>
     <a href="https://shizuku.rikka.app"><img src="https://img.shields.io/badge/Engine-Shizuku%20ADB-9C27B0?style=for-the-badge&logo=android" alt="Shizuku" /></a>
     <a href="https://github.com/sachinmandawi/NetCordon/stargazers"><img src="https://img.shields.io/github/stars/sachinmandawi/NetCordon?style=for-the-badge&color=FFA000" alt="Stars" /></a>
@@ -20,7 +20,7 @@
   </p>
 
   <p align="center">
-    <a href="https://github.com/sachinmandawi/NetCordon/releases/download/v1.0.0/NetCordon_v1.0.0.apk">
+    <a href="https://github.com/sachinmandawi/NetCordon">
       <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_LATEST_APK-v1.0.0-00E676?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
     </a>
     &nbsp;&nbsp;
@@ -80,7 +80,7 @@ NetCordon provides granular, per-app network isolation:
 2. Open Shizuku and start it via **Wireless Debugging** (no PC required on Android 11+) or via **ADB on PC**.
 
 ### Step 2: Install NetCordon
-1. Download the latest **[NetCordon_v1.0.0.apk](https://github.com/sachinmandawi/NetCordon/releases/download/v1.0.0/NetCordon_v1.0.0.apk)**.
+1. Download the latest **[NetCordon_v1.0.0.apk](https://github.com/sachinmandawi/NetCordon)**.
 2. Install the APK and grant **Shizuku & Usage Access** permissions.
 3. Tap the **WiFi** or **Mobile Data** icon next to any app to protect your privacy!
 
