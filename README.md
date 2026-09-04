@@ -1,25 +1,31 @@
-<div align="center">
+﻿<div align="center">
 
-  <img src="public/logo.png" alt="NetCordon Logo" width="100" height="100" style="border-radius: 24px;" />
+  <img src="public/logo.png" alt="NetCordon Logo" width="108" height="108" style="border-radius: 26px;" />
 
   # 🛡️ NetCordon
-  ### Intelligent Rootless Android App Firewall & Privacy Shield
+  ### 100% Free & Open-Source Android Firewall & Privacy Shield
+  **Zero Root · Zero VPN · Powered by Shizuku API**
 
   <p align="center">
     <a href="https://github.com/sachinmandawi/NetCordon/releases/latest"><img src="https://img.shields.io/badge/Release-v1.0.0-4CAF50?style=for-the-badge&logo=android&logoColor=white" alt="Release" /></a>
-    <a href="https://github.com/sachinmandawi/NetCordon/stargazers"><img src="https://img.shields.io/badge/Stars-Rate%20Repo-FFA000?style=for-the-badge&logo=github&logoColor=white" alt="Stars" /></a>
     <a href="https://github.com/sachinmandawi/NetCordon/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-2196F3?style=for-the-badge" alt="License" /></a>
     <a href="https://shizuku.rikka.app"><img src="https://img.shields.io/badge/Engine-Shizuku%20ADB-9C27B0?style=for-the-badge&logo=android" alt="Shizuku" /></a>
+    <a href="https://github.com/sachinmandawi/NetCordon/stargazers"><img src="https://img.shields.io/github/stars/sachinmandawi/NetCordon?style=for-the-badge&color=FFA000" alt="Stars" /></a>
+    <a href="https://github.com/sachinmandawi/NetCordon/issues"><img src="https://img.shields.io/github/issues/sachinmandawi/NetCordon?style=for-the-badge&color=E91E63" alt="Issues" /></a>
   </p>
 
   <p align="center">
-    <b>NetCordon</b> is a modern, rootless Android firewall built with <b>Jetpack Compose</b>.<br/>
-    Take complete control of background network traffic, foreground app states, and push alerts without VPN tunnels or root access.
+    <b>NetCordon</b> is a modern, privacy-first Android app firewall built completely with <b>Jetpack Compose</b>.<br/>
+    Unlike traditional firewalls that force a battery-draining local VPN tunnel, NetCordon controls network traffic directly at the system level via <b>Shizuku (ADB binder)</b>.
   </p>
 
   <p align="center">
     <a href="https://github.com/sachinmandawi/NetCordon/releases/download/v1.0.0/NetCordon_v1.0.0.apk">
-      <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_APK-v1.0.0_(Latest)-2E7D32?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+      <img src="https://img.shields.io/badge/⬇️_DOWNLOAD_LATEST_APK-v1.0.0-00E676?style=for-the-badge&logo=android&logoColor=black" alt="Download APK" />
+    </a>
+    &nbsp;&nbsp;
+    <a href="https://sachinmandawi.github.io">
+      <img src="https://img.shields.io/badge/🌐_OFFICIAL_WEBSITE-Visit_Portal-1E88E5?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website" />
     </a>
   </p>
 
@@ -27,67 +33,93 @@
 
 ---
 
-## 🌟 The 3 Core Pillars of NetCordon
+## ⚡ Why NetCordon Over Other Firewalls?
 
-NetCordon is designed around three powerful, automated privacy and network management pillars:
-
-### 📴 1. Background Traffic Freeze (Single-Tick ✓ Privacy)
-* **What it does:** The instant a restricted app (such as **WhatsApp**, **Instagram**, or **Telegram**) is minimized, closed, or your screen is locked, NetCordon cuts 100% of its background internet access.
-* **Real-World Experience:** Senders see only a **Single Tick (✓)** on sent messages because the app cannot establish background connections.
-* **Benefits:** Complete peace of mind, zero background telemetry, and massive mobile data & battery savings.
-
----
-
-### ⚡ 2. Foreground Auto-Resume (Seamless On-Demand Access)
-* **What it does:** The exact moment you actively open a protected app, NetCordon automatically detects foreground activity and instantly restores full internet access.
-* **Real-World Experience:** You can chat, browse, or call normally without touching any firewall settings. As soon as you exit or minimize the app, network access is immediately frozen again.
-* **Benefits:** Zero manual toggling — internet works on-demand only when you are actively using the app.
+| Feature | Standard VPN Firewalls (NetGuard, etc.) | NetCordon (Open Source) |
+|---|---|---|
+| **Root Required?** | ❌ No | ✅ **No Root Needed** (Works via Shizuku) |
+| **Battery Drain?** | ⚠️ High (Constantly runs local VPN loopback) | 🟢 **Ultra-Low** (Native OS policy triggers) |
+| **Can use Real VPN alongside?** | ❌ No (Android allows only 1 active VPN) | ✅ **YES! Use any VPN (Proton, Mullvad) alongside** |
+| **Single-Tick (✓) WhatsApp Privacy** | ⚠️ Complicated setup | ✅ **Automatic (Smart Shield mode)** |
+| **In-App Direct Auto-Update** | ❌ Requires manual reinstall | ✅ **Direct 1-tap in-app update (No uninstall)** |
+| **Play Store Independent** | ⚠️ Often restricted | ✅ **100% Free & Open-Source on GitHub** |
 
 ---
 
-### 🔕 3. Distraction-Free Notification Muting (Zero Popups & Vibrations)
-* **What it does:** Completely suppresses and silences all background push notifications, heads-up popups, vibration alerts, and ringtones from restricted apps.
-* **Real-World Experience:** No unexpected message popups or vibrating alerts while you are playing competitive games, watching movies, studying, or attending meetings.
-* **Benefits:** 100% focused, distraction-free smartphone experience.
+## 🌟 The 3-Tier Firewall Architecture
+
+NetCordon provides granular, per-app network isolation:
+
+### 1. 🟢 Always Allowed (Normal Mode)
+* Apps have unrestricted access to Wi-Fi and Mobile Data.
+
+### 2. 🟡 Smart Shield (Background Freeze & Single-Tick Privacy)
+* **What it does:** The instant you minimize an app (like WhatsApp, Instagram, Telegram) or lock your phone screen, NetCordon immediately cuts all background traffic.
+* **Single-Tick Experience:** Message senders see only a **Single Tick (✓)** because background connections are completely blocked.
+* **On-Demand Access:** The exact millisecond you re-open the app, full internet is restored automatically.
+
+### 3. 🔴 Total Blackout Mode
+* Completely eliminates all incoming and outgoing network traffic for chosen apps across Wi-Fi and Mobile Data, both foreground and background.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Key Features
 
-### 1. Prerequisites
-* Android device running **Android 8.0 (Oreo) or higher** (Android 8.0 - 15+ supported).
-* [**Shizuku App**](https://shizuku.rikka.app/) installed and activated via **Wireless Debugging** or **ADB PC**.
-
-### 2. Installation & Usage
-1. Download the latest APK from the [**Releases Page**](https://github.com/sachinmandawi/NetCordon/releases).
-2. Install the APK on your device.
-3. Launch NetCordon, grant **Shizuku & Usage Access permissions**, and tap **"Continue to NetCordon"**.
-4. Tap the **WiFi** or **Data** icon next to any app to activate background freezing and notification protection!
+* 🚫 **Distraction-Free Notification Muting:** Suppresses heads-up popups, alerts, and vibrations from restricted apps during gaming, movies, or work.
+* 📈 **Floating Speedometer & Traffic Radar:** Live per-app upload/download speed overlay and leak detection.
+* 🔒 **Biometric & Device Credential Security:** Hardware-backed fingerprint, face unlock, and device PIN/Pattern app lock.
+* 🔄 **Built-in GitHub Auto-Updater:** Checks GitHub Releases for new updates and installs them in-place with zero data loss.
+* 💾 **JSON Profile Studio:** Export, import, and backup your firewall rules and custom schedules with syntax validation.
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## 📥 Installation & Setup Guide
 
-* **Language:** 100% Kotlin
-* **UI Framework:** Android Jetpack Compose (Material 3 Dark Palette)
-* **Privilege Layer:** Shizuku API (Rikka Binder Service — Zero Root / Zero VPN)
-* **Background Engine:** Android Foreground Service with BroadcastReceivers (`SCREEN_OFF`, `USER_PRESENT`, `BOOT_COMPLETED`)
-* **Persistence:** Android SharedPreferences (`PrefsManager`)
+### Step 1: Install Shizuku
+1. Install [**Shizuku**](https://shizuku.rikka.app/) on your Android device (Android 8.0 to Android 15+).
+2. Open Shizuku and start it via **Wireless Debugging** (no PC required on Android 11+) or via **ADB on PC**.
+
+### Step 2: Install NetCordon
+1. Download the latest **[NetCordon_v1.0.0.apk](https://github.com/sachinmandawi/NetCordon/releases/download/v1.0.0/NetCordon_v1.0.0.apk)**.
+2. Install the APK and grant **Shizuku & Usage Access** permissions.
+3. Tap the **WiFi** or **Mobile Data** icon next to any app to protect your privacy!
 
 ---
 
-## 📬 Developer & Support
+## 🛠️ Building From Source
 
-Developed with ❤️ by **Sachin Mandawi**.
+You can easily build NetCordon yourself using Gradle:
 
-* 📧 **Email:** [sachinmandawi@gmail.com](mailto:sachinmandawi@gmail.com)
-* 🐙 **GitHub Profile:** [@sachinmandawi](https://github.com/sachinmandawi)
-* 🌟 **Repository:** [NetCordon on GitHub](https://github.com/sachinmandawi/NetCordon)
+`ash
+# Clone the open-source repository
+git clone https://github.com/sachinmandawi/NetCordon.git
+cd NetCordon/android_project
 
-If you find this project helpful, please consider **starring ⭐ the repository**!
+# Run unit test suite (48 tests)
+./gradlew testDebugUnitTest
+
+# Assemble debug APK
+./gradlew assembleDebug
+`
+The compiled APK will be at: ndroid_project/app/build/outputs/apk/debug/app-debug.apk.
+
+---
+
+## 🤝 Contributing
+
+Contributions, feature requests, and bug reports are warmly welcome!
+- Check existing [Issues](https://github.com/sachinmandawi/NetCordon/issues) or open a new one.
+- Fork the repository and submit a Pull Request.
+
+---
+
+## 📄 License & Privacy Promise
+
+* **License:** This project is licensed under the **[MIT License](LICENSE)**.
+* **Privacy:** NetCordon operates **100% on-device**. No user data, app lists, network packets, or telemetry are ever collected, logged, or transmitted to any external server.
 
 ---
 
 <div align="center">
-  <sub>Licensed under the <a href="LICENSE">MIT License</a>. Copyright © 2026 Sachin Mandawi.</sub>
+  <sub>Developed with ❤️ by <b><a href="https://github.com/sachinmandawi">Sachin Mandavi</a></b>.</sub>
 </div>
