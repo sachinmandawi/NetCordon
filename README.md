@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
   <img src="public/logo.png" alt="NetCordon" width="96" height="96" style="border-radius: 22px;" />
 
@@ -38,11 +38,11 @@
 
 ### 🛠️ Build from Source
 
-`ash
+```bash
 git clone https://github.com/sachinmandawi/NetCordon.git
 cd NetCordon/android_project
 ./gradlew assembleDebug
-`
+```
 
 ---
 
