@@ -3,29 +3,74 @@
 
 :root {
   font-family: 'Roboto', -apple-system, sans-serif;
-  color-scheme: dark;
-  --bg:        #1a1a1a;
-  --surface:   #242424;
-  --surface2:  #2e2e2e;
-  --divider:   #333333;
-  --primary:   #4caf50;
-  --primary-dim: rgba(76,175,80,0.15);
-  --on-bg:     #e8e8e8;
-  --on-surface:#c8c8c8;
-  --dim:       #888888;
-  --red:       #ef5350;
-  --red-dim:   rgba(239,83,80,0.14);
-  --yellow:    #ffb300;
-  --ripple:    rgba(255,255,255,0.06);
+  color-scheme: light;
+  --bg:        #F7F9F7;
+  --surface:   #FFFFFF;
+  --surface2:  #EDF2EE;
+  --divider:   #E2E8E4;
+  --primary:   #007A50;
+  --primary-dim: rgba(0, 122, 80, 0.12);
+  --on-bg:     #191C1A;
+  --on-surface:#191C1A;
+  --dim:       #5F6E65;
+  --red:       #DC2626;
+  --red-dim:   rgba(220, 38, 38, 0.12);
+  --yellow:    #D97706;
+  --ripple:    rgba(0, 0, 0, 0.05);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg:        #141414;
+  --surface:   #1E1E1E;
+  --surface2:  #282828;
+  --divider:   #262626;
+  --primary:   #4CAF50;
+  --primary-dim: rgba(76, 175, 80, 0.15);
+  --on-bg:     #ECECEC;
+  --on-surface:#C8C8C8;
+  --dim:       #888888;
+  --red:       #EF5350;
+  --red-dim:   rgba(239, 83, 80, 0.14);
+  --yellow:    #FFB300;
+  --ripple:    rgba(255, 255, 255, 0.06);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  outline: none;
+}
+
+::selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+::-moz-selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+input, textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
 
 html, body, #root {
   width: 100%; height: 100%; min-height: 100vh;
   background: var(--bg); color: var(--on-bg);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   /* Status bar safe area */
   padding-top: env(safe-area-inset-top);
   padding-top: constant(safe-area-inset-top); /* iOS older */
@@ -38,7 +83,7 @@ html, body, #root {
   background: #1f1f1f;
 }
 
-button { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; outline: none; }
 
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }

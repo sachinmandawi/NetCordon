@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldCheck, Search, MoreVertical, X,
-  Wifi, WifiOff, Signal, SignalZero, AlertTriangle,
-  ArrowLeft, Trash2, Bell, Power, Eye, Package,
-  Info, Activity, ChevronRight, CheckCircle2, Circle,
-  ExternalLink, Zap, RefreshCw, PauseCircle
+  Search, X, AlertTriangle,
+  ArrowLeft, Trash2, Activity, ChevronRight, CheckCircle2, Circle,
+  ExternalLink, Zap, RefreshCw, PauseCircle,
+  BarChart3, Lock, Fingerprint, Shield, Sliders, Ban, Clock, Plus
 } from 'lucide-react';
 
 /* ─── App Data ─── */
@@ -27,40 +26,6 @@ const INIT_APPS = [
 
 /* ─── Shared Styles ─── */
 const IB = { width:44, height:44, borderRadius:22, background:'none', border:'none', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 };
-
-/* ─── WiFi / Data Icon Toggle ─── */
-function NetIcon({ blocked, type, onToggle }) {
-  return (
-    <button
-      onClick={onToggle}
-      style={{ width:52, height:52, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none' }}
-    >
-      <div style={{
-        width:38, height:38, borderRadius:11,
-        backgroundColor: blocked ? 'rgba(239,83,80,0.18)' : 'rgba(76,175,80,0.14)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        transition:'background-color 0.18s',
-        position:'relative', overflow:'hidden',
-      }}>
-        {/* Full icon — always shown, color changes */}
-        {type === 'wifi'
-          ? <Wifi   size={20} color={blocked ? '#ef5350' : '#4caf50'} strokeWidth={2.2} />
-          : <Signal size={20} color={blocked ? '#ef5350' : '#4caf50'} strokeWidth={2.2} />
-        }
-        {/* Single diagonal slash \ when blocked */}
-        {blocked && (
-          <svg
-            width="38" height="38"
-            viewBox="0 0 38 38"
-            style={{ position:'absolute', top:0, left:0, pointerEvents:'none' }}
-          >
-            <line x1="9" y1="9" x2="29" y2="29" stroke="#ef5350" strokeWidth="2.8" strokeLinecap="round"/>
-          </svg>
-        )}
-      </div>
-    </button>
-  );
-}
 
 /* ─── Toggle Switch ─── */
 function Toggle({ on, onToggle }) {
@@ -234,6 +199,147 @@ function SplashScreen({ onFinish }) {
 }
 
 /* ═══════════════════════════
+   ONBOARDING / APP WALKTHROUGH SCREEN
+═══════════════════════════ */
+function OnboardingWalkthroughScreen({ onDone }) {
+  const [slide, setSlide] = useState(0);
+
+  const slides = [
+    {
+      badge: 'NO-VPN • OPEN SOURCE',
+      badgeColor: '#4caf50',
+      title: 'No-VPN Android Firewall',
+      subtitle: 'Direct Shizuku kernel control with zero battery drain.',
+      useLogo: true,
+      bullets: [
+        { text: '⚡ Zero battery drain & no VPN tunnels', color: '#4caf50' },
+        { text: '🛡️ 100% On-device, open-source & free', color: '#64b5f6' },
+      ]
+    },
+    {
+      badge: '3 ISOLATION MODES',
+      badgeColor: '#ffb300',
+      title: 'Smart Per-App Control',
+      subtitle: 'Tap any app card from your dashboard to switch mode:',
+      icon: <Shield size={38} color="#ffb300" />,
+      bullets: [
+        { text: '🟢 Allowed • Normal internet access', color: '#4caf50' },
+        { text: '🟡 Smart Shield • Cut on close, resume on open', color: '#ffb300' },
+        { text: '🔴 Total Blackout • 100% offline & zero ads', color: '#ef5350' },
+      ]
+    },
+    {
+      badge: 'AUTOMATION',
+      badgeColor: '#64b5f6',
+      title: 'Scheduled Firewall',
+      subtitle: 'Automate your bedtime and deep work focus hours:',
+      icon: <Clock size={38} color="#64b5f6" />,
+      bullets: [
+        { text: '🌙 Bedtime Shield • Auto-mute social apps at night', color: '#ffb300' },
+        { text: '📚 Work Focus • Stop distractions during work hours', color: '#64b5f6' },
+      ]
+    },
+    {
+      badge: 'PRIVACY RADAR',
+      badgeColor: '#ab47bc',
+      title: 'Leak Radar & Security',
+      subtitle: 'Stop silent background trackers and protect your device:',
+      icon: <Shield size={38} color="#ab47bc" />,
+      bullets: [
+        { text: '🚨 Instant alert on background tracker attempts', color: '#ef5350' },
+        { text: '🔐 Biometric Fingerprint & device PIN lock', color: '#4caf50' },
+      ]
+    }
+  ];
+
+  const cur = slides[slide];
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0f0f0f', padding: '20px 20px 28px', justifyContent: 'space-between' }}>
+      {/* Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ background: '#1e1e1e', border: '1px solid #333', padding: '5px 10px', borderRadius: 8, fontSize: 12, color: '#888', fontWeight: 500 }}>
+          Guide {slide + 1} of {slides.length}
+        </div>
+        {slide < slides.length - 1 ? (
+          <button onClick={onDone} style={{ background: 'none', border: 'none', color: '#888', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: '6px 8px' }}>
+            Skip Guide
+          </button>
+        ) : <div />}
+      </div>
+
+      {/* Middle Card */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '16px 0' }}>
+        <div style={{ width: 76, height: 76, borderRadius: 22, background: `${cur.badgeColor}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          {cur.useLogo ? (
+            <img src="/logo.png" alt="NetCordon" style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover' }} />
+          ) : cur.icon}
+        </div>
+
+        <div style={{ display: 'inline-block', background: `${cur.badgeColor}24`, border: `1px solid ${cur.badgeColor}55`, color: cur.badgeColor, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', padding: '3px 9px', borderRadius: 6, marginBottom: 10 }}>
+          {cur.badge}
+        </div>
+
+        <h2 style={{ fontSize: 21, fontWeight: 700, color: '#f0f0f0', margin: '0 0 6px' }}>{cur.title}</h2>
+        <p style={{ fontSize: 13, color: '#888', margin: '0 0 18px', maxWidth: 320, lineHeight: 1.4 }}>{cur.subtitle}</p>
+
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {cur.bullets.map((it, idx) => (
+            <div key={idx} style={{ background: '#1e1e1e', border: '1px solid #2d2d2d', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: it.color, flexShrink: 0 }} />
+              <div style={{ fontSize: 13.5, fontWeight: 500, color: '#f0f0f0' }}>{it.text}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+          {slides.map((_, i) => (
+            <div key={i} style={{ width: i === slide ? 24 : 6, height: 6, borderRadius: 3, background: i === slide ? '#4caf50' : '#444', transition: 'all .25s ease' }} />
+          ))}
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          {slide > 0 && (
+            <button onClick={() => setSlide(s => s - 1)} style={{ flex: 1, height: 48, borderRadius: 12, border: '1px solid #333', background: '#1e1e1e', color: '#f0f0f0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              Back
+            </button>
+          )}
+          <button
+            onClick={() => {
+              if (slide < slides.length - 1) setSlide(s => s + 1);
+              else onDone();
+            }}
+            style={{
+              flex: slide > 0 ? 2 : 1,
+              height: 48,
+              borderRadius: 12,
+              border: 'none',
+              background: '#4caf50',
+              color: '#fff',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6
+            }}
+          >
+            {slide < slides.length - 1 ? 'Continue' : 'Get Started'}
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════
    ULTRA-COMPACT ZERO-SCROLL PERMISSION SCREEN
 ═══════════════════════════ */
 function PermissionScreen({ perms, onGrant, onDone }) {
@@ -355,6 +461,7 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [setupDone, setSetupDone] = useState(false);
+  const [showWalkthrough, setShowWalkthrough] = useState(() => localStorage.getItem('netcordon_onboarding_v1') !== 'true');
 
   const grantPerm = (id) => setPerms(p => p.map(x => x.id === id ? { ...x, granted: true } : x));
 
@@ -363,7 +470,6 @@ export default function App() {
   const [apps, setApps]           = useState(INIT_APPS);
   const [search, setSearch]       = useState('');
   const [searching, setSearching] = useState(false);
-  const [showMenu, setShowMenu]   = useState(false);
   const [shizukuOk, setShizukuOk] = useState(true);
 
   // Settings
@@ -374,6 +480,52 @@ export default function App() {
   const [showPkg,   setShowPkg]   = useState(true);
   const [blockNotifs, setBlockNotifs] = useState(true);
   const [screenOffShield, setScreenOffShield] = useState(false);
+  const [appLockEnabled, setAppLockEnabled]   = useState(false);
+  const [isLocked, setIsLocked]               = useState(false);
+  const [lockOnScreenOff, setLockOnScreenOff] = useState(true);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('today');
+  const [blackoutApps, setBlackoutApps]       = useState(new Set(['com.pubg.imobile']));
+  const [darkMode, setDarkMode]               = useState(() => localStorage.getItem('netcordon_dark_mode') === 'true');
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('netcordon_dark_mode', 'true');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('netcordon_dark_mode', 'false');
+    }
+  }, [darkMode]);
+  // Templates removed - Pure custom schedules only
+  const [schedules, setSchedules] = useState([]);
+  const [showAddCustomSchedule, setShowAddCustomSchedule] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [startHourStr, setStartHourStr] = useState('10');
+  const [startMinStr,  setStartMinStr]  = useState('00');
+  const [startAmPm,    setStartAmPm]    = useState('PM');
+  const [endHourStr,   setEndHourStr]   = useState('07');
+  const [endMinStr,    setEndMinStr]    = useState('00');
+  const [endAmPm,      setEndAmPm]      = useState('AM');
+  const [newMode,  setNewMode]  = useState('TOTAL_BLACKOUT');
+  const [newDays,  setNewDays]  = useState([1,2,3,4,5,6,7]);
+  const [selectedScheduleApps, setSelectedScheduleApps] = useState([]);
+  const [scheduleForAppConfig, setScheduleForAppConfig] = useState(null);
+  const [selectedAppForPolicy, setSelectedAppForPolicy] = useState(null);
+
+  const openAddCustomSchedule = () => {
+    const initialMode = 'TOTAL_BLACKOUT';
+    setNewMode(initialMode);
+    const blackoutPkgs = apps.filter(a => blackoutApps.has(a.id)).map(a => a.id);
+    setSelectedScheduleApps(blackoutPkgs);
+    setShowAddCustomSchedule(true);
+  };
+  const [touchStart, setTouchStart]           = useState(0);
+  const [pullY, setPullY]                     = useState(0);
+  const handleRefresh = () => {
+    setPullY(0);
+    setTouchStart(0);
+    pushLog('I', 'Apps', 'Installed applications list refreshed');
+  };
 
   // Live Detailed Logs
   const [logs, setLogs] = useState([
@@ -390,38 +542,6 @@ export default function App() {
     const t = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}.${String(d.getMilliseconds()).padStart(3,'0')}`;
     setLogs(p => [{ id:Date.now() + Math.random(), tag, cat, msg, t }, ...p.slice(0,199)]);
   };
-
-  const toggleWifi = id => setApps(p => p.map(a => {
-    if (a.id !== id) return a;
-    const n = !a.wifiBlocked;
-    if (n) {
-      pushLog('W', 'NetPol', `uid-policy ${a.uid} wifi -> REJECT_ALL (${a.name})`);
-      pushLog('D', 'AppOps', `RUN_IN_BACKGROUND -> IGNORE (${a.id})`);
-      if (blockNotifs) pushLog('D', 'AppOps', `POST_NOTIFICATION -> IGNORE (${a.id})`);
-      pushLog('W', 'Shield', `[BLOCKED] ${a.name} (UID ${a.uid}) WiFi & FCM wakeups frozen -> Single Tick (✓)`);
-    } else {
-      pushLog('I', 'NetPol', `uid-policy ${a.uid} wifi -> ALLOW_ALL (${a.name})`);
-      pushLog('I', 'AppOps', `RUN_IN_BACKGROUND & NOTIFICATIONS -> ALLOWED (${a.id})`);
-      pushLog('I', 'Shield', `[ALLOWED] ${a.name} WiFi restored -> Double Tick (✓✓)`);
-    }
-    return { ...a, wifiBlocked: n };
-  }));
-
-  const toggleData = id => setApps(p => p.map(a => {
-    if (a.id !== id) return a;
-    const n = !a.dataBlocked;
-    if (n) {
-      pushLog('W', 'NetPol', `uid-policy ${a.uid} data -> REJECT_ALL (${a.name})`);
-      pushLog('D', 'AppOps', `RUN_IN_BACKGROUND -> IGNORE (${a.id})`);
-      if (blockNotifs) pushLog('D', 'AppOps', `POST_NOTIFICATION -> IGNORE (${a.id})`);
-      pushLog('W', 'Shield', `[BLOCKED] ${a.name} (UID ${a.uid}) Mobile Data frozen -> Single Tick (✓)`);
-    } else {
-      pushLog('I', 'NetPol', `uid-policy ${a.uid} data -> ALLOW_ALL (${a.name})`);
-      pushLog('I', 'AppOps', `RUN_IN_BACKGROUND & NOTIFICATIONS -> ALLOWED (${a.id})`);
-      pushLog('I', 'Shield', `[ALLOWED] ${a.name} Mobile Data restored -> Double Tick (✓✓)`);
-    }
-    return { ...a, dataBlocked: n };
-  }));
 
   const [filterMode, setFilterMode] = useState('all'); // all | blocked
 
@@ -455,15 +575,10 @@ export default function App() {
 
 
 
-  const menuItems = [
-    { label:'Logs',         action:()=>{ setScreen('logs');     setShowMenu(false); } },
-    { label:'Settings',     action:()=>{ setScreen('settings'); setShowMenu(false); } },
-    { label: shizukuOk ? 'Disconnect Shizuku' : 'Connect Shizuku', action:()=>{ setShizukuOk(p=>!p); setShowMenu(false); pushLog('I','Shizuku', shizukuOk?'Binder disconnected':'Binder reconnected'); }},
-  ];
 
   /* ════ RENDER ════ */
   return (
-    <div style={{ width:'100%', height:'100vh', background:'var(--bg)', display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+    <div style={{ width:'100%', height:'100vh', background:'var(--bg)', display:'flex', flexDirection:'column', overflow:'hidden', position:'relative', userSelect:'none', WebkitUserSelect:'none', WebkitTapHighlightColor:'transparent' }}>
 
       {/* ── Animated Splash Screen ── */}
       {showSplash && (
@@ -471,7 +586,7 @@ export default function App() {
       )}
 
       {/* ── Persistent Top Bar (Home, Logs, Settings) ── */}
-      {setupDone && (
+      {setupDone && !showWalkthrough && (
         screen === 'home' ? (
           <div style={{ background:'#1f1f1f', borderBottom:'1px solid var(--divider)', flexShrink:0 }}>
             <div style={{ height:56, display:'flex', alignItems:'center', paddingLeft: searching ? 4 : 16, paddingRight:4, gap:4 }}>
@@ -535,25 +650,12 @@ export default function App() {
                   <button onClick={()=>setSearching(true)} style={IB}><Search size={21} color='#c8c8c8'/></button>
                 </div>
               )}
-              <div style={{ position:'relative', flexShrink:0 }}>
-                <button onClick={()=>setShowMenu(p=>!p)} style={IB}><MoreVertical size={22} color='#c8c8c8'/></button>
-                {showMenu && (
-                  <>
-                    <div onClick={()=>setShowMenu(false)} style={{ position:'fixed', inset:0, zIndex:9 }}/>
-                    <div style={{ position:'absolute', top:46, right:0, zIndex:10, background:'#2c2c2c', borderRadius:4, boxShadow:'0 6px 20px rgba(0,0,0,0.6)', minWidth:196, overflow:'hidden' }}>
-                      {menuItems.map(m => (
-                        <button key={m.label} onClick={m.action}
-                          style={{ display:'block', width:'100%', textAlign:'left', padding:'13px 20px', background:'none', border:'none', fontSize:14, color:'#e0e0e0' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#3a3a3a'}
-                          onMouseLeave={e=>e.currentTarget.style.background='none'}
-                        >{m.label}</button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
           </div>
+        ) : screen === 'schedules' ? (
+          <Toolbar title="Firewall Schedules" onBack={()=>setScreen('home')}/>
+        ) : screen === 'analytics' ? (
+          <Toolbar title="Network Analytics" onBack={()=>setScreen('home')} right={<button onClick={()=>pushLog('I','Analytics','Network usage statistics refreshed')} style={IB}><RefreshCw size={19} color='#c8c8c8'/></button>}/>
         ) : screen === 'logs' ? (
           <Toolbar title="Logs" onBack={()=>setScreen('home')} right={<button onClick={()=>setLogs([])} style={IB}><Trash2 size={20} color='#c8c8c8'/></button>}/>
         ) : (
@@ -564,8 +666,15 @@ export default function App() {
       {/* ── CONTENT ── */}
       <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', position:'relative' }}>
 
-        {/* ══ PERMISSION SETUP SCREEN (First Launch) ══ */}
-        {!setupDone ? (
+        {/* ══ ONBOARDING WALKTHROUGH SCREEN ══ */}
+        {showWalkthrough ? (
+          <OnboardingWalkthroughScreen
+            onDone={() => {
+              localStorage.setItem('netcordon_onboarding_v1', 'true');
+              setShowWalkthrough(false);
+            }}
+          />
+        ) : !setupDone ? (
           <PermissionScreen
             perms={perms}
             onGrant={grantPerm}
@@ -656,16 +765,6 @@ export default function App() {
                   </div>
 
                   {/* Right: WiFi & Mobile Data Column Titles */}
-                  <div style={{ display: 'flex' }}>
-                    <div style={{ width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 0' }}>
-                      <Wifi size={13} color="#666"/>
-                      <span style={{ fontSize: 9, color: '#555', marginTop: 1, fontWeight: 700 }}>WiFi</span>
-                    </div>
-                    <div style={{ width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 0' }}>
-                      <Signal size={13} color="#666"/>
-                      <span style={{ fontSize: 9, color: '#555', marginTop: 1, fontWeight: 700 }}>Data</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* App list with touch & mouse pull-to-refresh */}
@@ -698,19 +797,36 @@ export default function App() {
                 >
                 {filtered.map((app, i) => (
                   <div key={app.id}>
-                    <div style={{ display:'flex', alignItems:'center', paddingLeft:16, transition:'background 0.1s' }}
+                    <div style={{ display:'flex', alignItems:'center', padding:'8px 16px', cursor:'pointer', transition:'background 0.1s' }}
+                      onClick={()=>setSelectedAppForPolicy(app)}
                       onMouseDown={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}
                       onMouseUp={e=>e.currentTarget.style.background='transparent'}
                       onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <div style={{ width:44, height:44, borderRadius:22, background:'#2a2a2a', border:'1px solid #333', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:'#2a2a2a', border:'1px solid #333', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>
                         {app.icon}
                       </div>
-                      <div style={{ flex:1, minWidth:0, paddingLeft:14, paddingRight:4 }}>
-                        <div style={{ fontSize:15, color:'#e8e8e8', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{app.name}</div>
-                        {showPkg && <div style={{ fontSize:12, color:'#666', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{app.id}</div>}
+                      <div style={{ flex:1, minWidth:0, paddingLeft:14, paddingRight:10 }}>
+                        <div style={{ fontSize:15, color:'#e8e8e8', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{app.name}</div>
+                        {showPkg && <div style={{ fontSize:12, color:'#777', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{app.id}</div>}
                       </div>
-                      <NetIcon blocked={app.wifiBlocked} type="wifi" onToggle={()=>toggleWifi(app.id)}/>
-                      <NetIcon blocked={app.dataBlocked} type="data" onToggle={()=>toggleData(app.id)}/>
+
+                      {/* Right: Active Policy Pill + Chevron */}
+                      <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
+                        {blackoutApps.has(app.id) ? (
+                          <div style={{ fontSize:10, fontWeight:700, color:'#ef5350', background:'rgba(239,83,80,0.18)', border:'1px solid rgba(239,83,80,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                            Blackout
+                          </div>
+                        ) : (app.wifiBlocked || app.dataBlocked) ? (
+                          <div style={{ fontSize:10, fontWeight:700, color:'#ffb300', background:'rgba(255,179,0,0.18)', border:'1px solid rgba(255,179,0,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                            Smart Shield
+                          </div>
+                        ) : (
+                          <div style={{ fontSize:10, fontWeight:700, color:'#4caf50', background:'rgba(76,175,80,0.18)', border:'1px solid rgba(76,175,80,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                            Allowed
+                          </div>
+                        )}
+                        <ChevronRight size={18} color="var(--dim)" style={{ opacity:0.6 }} />
+                      </div>
                     </div>
                     {i < filtered.length-1 && <div style={{ height:1, background:'#252525', marginLeft:74 }}/>}
                   </div>
@@ -724,6 +840,686 @@ export default function App() {
                 )}
                 </div>
               </>
+            )}
+
+            {/* ══ SCHEDULES ══ */}
+            {screen === 'schedules' && (
+              <div style={{ flex:1, padding:'14px 16px', overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Banner */}
+                <div style={{ background:'#1b261d', border:'1px solid rgba(76,175,80,0.25)', borderRadius:16, padding:16, display:'flex', alignItems:'center', gap:14 }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:'rgba(76,175,80,0.18)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <Clock size={22} color='#4caf50' />
+                  </div>
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Automated Firewall Timers</div>
+                    <div style={{ fontSize:11.5, color:'#888', marginTop:2, lineHeight:1.4 }}>Auto-isolate social apps at bedtime or work hours with 0% battery drain.</div>
+                  </div>
+                </div>
+
+                {/* Add Custom Schedule Button */}
+                <button
+                  onClick={openAddCustomSchedule}
+                  style={{
+                    background: '#1c271e',
+                    border: '1px solid rgba(76,175,80,0.5)',
+                    borderRadius: 14,
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    color: '#4caf50',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={18} color="#4caf50" />
+                  Add Custom Schedule & Time
+                </button>
+
+                <div style={{ fontSize:12, fontWeight:700, color:'#888', letterSpacing:'0.05em', padding:'0 4px' }}>
+                  ACTIVE SCHEDULES ({schedules.length})
+                </div>
+
+                {schedules.length === 0 ? (
+                  <div style={{
+                    background: '#161616',
+                    border: '1px dashed #333',
+                    borderRadius: 16,
+                    padding: '36px 20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: 12
+                  }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 26, background: 'rgba(76,175,80,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Clock size={26} color="#4caf50" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>No Active Schedules</div>
+                      <div style={{ fontSize: 12, color: '#888', marginTop: 4, maxWidth: 260, lineHeight: 1.4 }}>
+                        All pre-made templates removed. Create your own custom firewall timer with exact hours.
+                      </div>
+                    </div>
+                    <button
+                      onClick={openAddCustomSchedule}
+                      style={{
+                        marginTop: 4,
+                        background: '#4caf50',
+                        border: 'none',
+                        borderRadius: 12,
+                        padding: '10px 20px',
+                        color: '#fff',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Plus size={16} color="#fff" />
+                      Create Custom Schedule
+                    </button>
+                  </div>
+                ) : (
+                  schedules.map(s => {
+                    const isBlackout = s.mode === 'TOTAL_BLACKOUT';
+                    return (
+                      <div key={s.id} style={{ background:'#1e1e1e', border: s.enabled ? '1px solid rgba(76,175,80,0.4)' : '1px solid #2d2d2d', borderRadius:16, padding:16 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                          <div>
+                            <div style={{ fontSize:16, fontWeight:700, color:'#fff' }}>{s.title}</div>
+                            <div style={{ fontSize:12, color:'#888', marginTop:3 }}>{s.start} – {s.end} ({s.days})</div>
+                          </div>
+                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                            <button
+                              onClick={() => setSchedules(schedules.filter(x => x.id !== s.id))}
+                              style={{ background:'none', border:'none', color:'#888', cursor:'pointer', padding:4 }}
+                            >
+                              <Trash2 size={16} color="#888" />
+                            </button>
+                            <div
+                              onClick={() => {
+                                setSchedules(schedules.map(x => x.id === s.id ? { ...x, enabled: !x.enabled } : x));
+                              }}
+                              style={{
+                                width: 44, height: 24, borderRadius: 12,
+                                background: s.enabled ? '#4caf50' : '#333',
+                                display: 'flex', alignItems: 'center',
+                                padding: 2, cursor: 'pointer',
+                                justifyContent: s.enabled ? 'flex-end' : 'flex-start',
+                                transition: 'all .2s ease'
+                              }}
+                            >
+                              <div style={{ width: 20, height: 20, borderRadius: 10, background: '#fff' }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ height:1, background:'#2d2d2d', margin:'12px 0 10px' }} />
+
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                          <span style={{
+                            fontSize:10, fontWeight:700,
+                            background: isBlackout ? 'rgba(239,83,80,0.15)' : 'rgba(255,179,0,0.15)',
+                            color: isBlackout ? '#ef5350' : '#ffb300',
+                            border: isBlackout ? '1px solid rgba(239,83,80,0.3)' : '1px solid rgba(255,179,0,0.3)',
+                            padding:'3px 8px', borderRadius:6
+                          }}>
+                            {isBlackout ? 'TOTAL BLACKOUT' : 'SMART SHIELD'}
+                          </span>
+                          {(() => {
+                            const count = s.targetPackages ? s.targetPackages.length : (s.appsCount !== undefined ? s.appsCount : 0);
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => setScheduleForAppConfig(s)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  fontSize: 12,
+                                  color: count === 0 ? '#ffb300' : '#4caf50',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  padding: 0
+                                }}
+                              >
+                                {count === 0 ? '⚠️ 0 Apps Configured ›' : `${count} ${count === 1 ? 'App' : 'Apps'} Configured ›`}
+                              </button>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* Modal: Modern Custom Time Schedule Picker */}
+            {showAddCustomSchedule && (
+              <div style={{
+                position:'fixed', inset:0, zIndex:999, background:'rgba(0,0,0,0.82)',
+                display:'flex', alignItems:'center', justifyContent:'center', padding:16
+              }}>
+                <div style={{
+                  background:'#191919', border:'1px solid #333', borderRadius:20,
+                  width:'100%', maxWidth:390, padding:20, display:'flex', flexDirection:'column', gap:14,
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
+                }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ fontSize:17, fontWeight:700, color:'#fff' }}>Add Custom Schedule</div>
+                    <button
+                      onClick={() => setShowAddCustomSchedule(false)}
+                      style={{ background:'none', border:'none', color:'#888', cursor:'pointer' }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Name Input */}
+                  <input
+                    value={newTitle}
+                    onChange={e => setNewTitle(e.target.value)}
+                    placeholder="Schedule Name (e.g. Gaming Session)"
+                    style={{
+                      background:'#121212', border:'1px solid #2e2e2e', borderRadius:10,
+                      padding:'10px 12px', color:'#fff', fontSize:13, outline:'none'
+                    }}
+                  />
+
+                  {/* Quick Suggestions */}
+                  <div style={{ display:'flex', gap:6 }}>
+                    {['🎮 Gaming', '📚 Study', '🏃 Gym', '🌙 Sleep'].map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setNewTitle(s)}
+                        style={{
+                          flex:1, background:'#222', border:'1px solid #333', borderRadius:8,
+                          padding:'5px 0', color:'#aaa', fontSize:11, cursor:'pointer'
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Unified Ultra-Compact 12-Hour Time Range Card */}
+                  <div style={{
+                    background:'#141414', border:'1px solid #282828', borderRadius:12,
+                    padding:'8px 12px', display:'flex', flexDirection:'column', gap:6
+                  }}>
+                    {/* START TIME ROW */}
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:7, height:7, borderRadius:'50%', background:'#4caf50' }} />
+                        <span style={{ fontSize:11, fontWeight:700, color:'#4caf50', letterSpacing:'0.05em' }}>START</span>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        {/* Time Input Box [ HH : MM ] */}
+                        <div style={{ display:'flex', alignItems:'center', background:'#222', border:'1px solid #333', borderRadius:8, padding:'3px 6px' }}>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
+                            autoFocus={false}
+                            value={startHourStr}
+                            onChange={e => setStartHourStr(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                            onBlur={() => {
+                              let num = parseInt(startHourStr, 10);
+                              if (isNaN(num) || num < 1) num = 12;
+                              if (num > 12) num = 12;
+                              setStartHourStr(String(num).padStart(2, '0'));
+                            }}
+                            placeholder="10"
+                            style={{
+                              width:26, height:22, background:'transparent', border:'none', color:'#fff',
+                              fontSize:14, fontWeight:700, textAlign:'center', outline:'none'
+                            }}
+                          />
+                          <span style={{ fontSize:14, fontWeight:700, color:'#4caf50', padding:'0 1px' }}>:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
+                            autoFocus={false}
+                            value={startMinStr}
+                            onChange={e => setStartMinStr(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                            onBlur={() => {
+                              let num = parseInt(startMinStr, 10);
+                              if (isNaN(num) || num < 0) num = 0;
+                              if (num > 59) num = 59;
+                              setStartMinStr(String(num).padStart(2, '0'));
+                            }}
+                            placeholder="00"
+                            style={{
+                              width:26, height:22, background:'transparent', border:'none', color:'#fff',
+                              fontSize:14, fontWeight:700, textAlign:'center', outline:'none'
+                            }}
+                          />
+                        </div>
+                        {/* AM/PM Switch */}
+                        <div style={{ display:'flex', background:'#222', borderRadius:8, padding:2, border:'1px solid #333' }}>
+                          {['AM', 'PM'].map(p => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setStartAmPm(p)}
+                              style={{
+                                padding:'2px 7px', borderRadius:6, border:'none',
+                                background: startAmPm === p ? '#4caf50' : 'transparent',
+                                color: startAmPm === p ? '#000' : '#888', fontWeight:700, fontSize:10, cursor:'pointer'
+                              }}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ height:1, background:'#262626' }} />
+
+                    {/* END TIME ROW */}
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:7, height:7, borderRadius:'50%', background:'#ffb300' }} />
+                        <span style={{ fontSize:11, fontWeight:700, color:'#ffb300', letterSpacing:'0.05em' }}>END</span>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        {/* Time Input Box [ HH : MM ] */}
+                        <div style={{ display:'flex', alignItems:'center', background:'#222', border:'1px solid #333', borderRadius:8, padding:'3px 6px' }}>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
+                            autoFocus={false}
+                            value={endHourStr}
+                            onChange={e => setEndHourStr(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                            onBlur={() => {
+                              let num = parseInt(endHourStr, 10);
+                              if (isNaN(num) || num < 1) num = 7;
+                              if (num > 12) num = 12;
+                              setEndHourStr(String(num).padStart(2, '0'));
+                            }}
+                            placeholder="07"
+                            style={{
+                              width:26, height:22, background:'transparent', border:'none', color:'#fff',
+                              fontSize:14, fontWeight:700, textAlign:'center', outline:'none'
+                            }}
+                          />
+                          <span style={{ fontSize:14, fontWeight:700, color:'#ffb300', padding:'0 1px' }}>:</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
+                            autoFocus={false}
+                            value={endMinStr}
+                            onChange={e => setEndMinStr(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                            onBlur={() => {
+                              let num = parseInt(endMinStr, 10);
+                              if (isNaN(num) || num < 0) num = 0;
+                              if (num > 59) num = 59;
+                              setEndMinStr(String(num).padStart(2, '0'));
+                            }}
+                            placeholder="00"
+                            style={{
+                              width:26, height:22, background:'transparent', border:'none', color:'#fff',
+                              fontSize:14, fontWeight:700, textAlign:'center', outline:'none'
+                            }}
+                          />
+                        </div>
+                        {/* AM/PM Switch */}
+                        <div style={{ display:'flex', background:'#222', borderRadius:8, padding:2, border:'1px solid #333' }}>
+                          {['AM', 'PM'].map(p => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setEndAmPm(p)}
+                              style={{
+                                padding:'2px 7px', borderRadius:6, border:'none',
+                                background: endAmPm === p ? '#ffb300' : 'transparent',
+                                color: endAmPm === p ? '#000' : '#888', fontWeight:700, fontSize:10, cursor:'pointer'
+                              }}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Firewall Mode Toggle */}
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewMode('TOTAL_BLACKOUT');
+                        const blackoutPkgs = apps.filter(a => blackoutApps.has(a.id)).map(a => a.id);
+                        setSelectedScheduleApps(blackoutPkgs);
+                      }}
+                      style={{
+                        flex:1, padding:9, borderRadius:10, cursor:'pointer',
+                        background: newMode === 'TOTAL_BLACKOUT' ? 'rgba(239,83,80,0.2)' : '#1a1a1a',
+                        border: newMode === 'TOTAL_BLACKOUT' ? '1px solid #ef5350' : '1px solid #2d2d2d',
+                        color: newMode === 'TOTAL_BLACKOUT' ? '#ef5350' : '#888',
+                        fontSize:12, fontWeight:700
+                      }}
+                    >
+                      🔴 Total Blackout
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewMode('SMART_SHIELD');
+                        const smartPkgs = apps.filter(a => (a.wifiBlocked || a.dataBlocked) && !blackoutApps.has(a.id)).map(a => a.id);
+                        setSelectedScheduleApps(smartPkgs);
+                      }}
+                      style={{
+                        flex:1, padding:9, borderRadius:10, cursor:'pointer',
+                        background: newMode === 'SMART_SHIELD' ? 'rgba(255,179,0,0.2)' : '#1a1a1a',
+                        border: newMode === 'SMART_SHIELD' ? '1px solid #ffb300' : '1px solid #2d2d2d',
+                        color: newMode === 'SMART_SHIELD' ? '#ffb300' : '#888',
+                        fontSize:12, fontWeight:700
+                      }}
+                    >
+                      🟡 Smart Shield
+                    </button>
+                  </div>
+
+                  {/* Save & Cancel Buttons */}
+                  <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCustomSchedule(false)}
+                      style={{ flex:1, height:42, borderRadius:10, border:'1px solid #333', background:'#222', color:'#888', fontSize:13, fontWeight:600, cursor:'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const title = newTitle.trim() || 'Custom Schedule';
+                        const sh = String(parseInt(startHourStr, 10) || 10).padStart(2, '0');
+                        const sm = String(parseInt(startMinStr, 10) || 0).padStart(2, '0');
+                        const eh = String(parseInt(endHourStr, 10) || 7).padStart(2, '0');
+                        const em = String(parseInt(endMinStr, 10) || 0).padStart(2, '0');
+                        const startStr = `${sh}:${sm} ${startAmPm}`;
+                        const endStr = `${eh}:${em} ${endAmPm}`;
+                        const autoPkgs = newMode === 'TOTAL_BLACKOUT'
+                          ? apps.filter(a => blackoutApps.has(a.id)).map(a => a.id)
+                          : apps.filter(a => (a.wifiBlocked || a.dataBlocked) && !blackoutApps.has(a.id)).map(a => a.id);
+                        setSchedules([
+                          ...schedules,
+                          {
+                            id: 'sched_' + Date.now(),
+                            title,
+                            start: startStr,
+                            end: endStr,
+                            days: 'Every Day',
+                            mode: newMode,
+                            targetPackages: autoPkgs,
+                            appsCount: autoPkgs.length,
+                            enabled: true
+                          }
+                        ]);
+                        setShowAddCustomSchedule(false);
+                        setNewTitle('');
+                      }}
+                      style={{ flex:2, height:42, borderRadius:10, border:'none', background:'#4caf50', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}
+                    >
+                      Save Schedule
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal: View Configured Apps for Existing Schedule (View-Only) */}
+            {scheduleForAppConfig && (
+              <div style={{
+                position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.85)',
+                display:'flex', alignItems:'center', justifyContent:'center', padding:16
+              }}>
+                <div style={{
+                  background:'#1e1e1e', border:'1px solid #333', borderRadius:20,
+                  width:'100%', maxWidth:380, padding:20, display:'flex', flexDirection:'column', gap:14
+                }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontSize:16, fontWeight:700, color:'#fff' }}>
+                        Configured Apps ({(scheduleForAppConfig.targetPackages || []).length})
+                      </div>
+                      <div style={{ fontSize:12, color: scheduleForAppConfig.mode === 'TOTAL_BLACKOUT' ? '#ef5350' : '#ffb300', fontWeight:600 }}>
+                        {scheduleForAppConfig.title} • {scheduleForAppConfig.mode === 'TOTAL_BLACKOUT' ? 'Total Blackout' : 'Smart Shield'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setScheduleForAppConfig(null)}
+                      style={{ background:'none', border:'none', color:'#888', cursor:'pointer' }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div style={{ maxHeight:260, overflowY:'auto', display:'flex', flexDirection:'column', gap:8 }}>
+                    {(() => {
+                      const currentPkgs = scheduleForAppConfig.targetPackages || [];
+                      const configuredList = apps.filter(a => currentPkgs.includes(a.id));
+                      if (configuredList.length === 0) {
+                        return (
+                          <div style={{ textAlign:'center', padding:'24px 0', color:'#888', fontSize:13 }}>
+                            No apps configured for this schedule
+                          </div>
+                        );
+                      }
+                      return configuredList.map(app => (
+                        <div
+                          key={app.id}
+                          style={{
+                            display:'flex', alignItems:'center', justifyContent:'space-between',
+                            padding:'10px 12px', background:'#161616',
+                            borderRadius:10, border:'1px solid #282828'
+                          }}
+                        >
+                          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                            <span style={{ fontSize:20 }}>{app.icon}</span>
+                            <div>
+                              <div style={{ fontSize:13, fontWeight:600, color:'#fff' }}>{app.name}</div>
+                              <div style={{ fontSize:10, color:'#777' }}>{app.id}</div>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize:10, fontWeight:700,
+                            padding:'3px 7px', borderRadius:6,
+                            background: scheduleForAppConfig.mode === 'TOTAL_BLACKOUT' ? 'rgba(239,83,80,0.15)' : 'rgba(255,179,0,0.15)',
+                            color: scheduleForAppConfig.mode === 'TOTAL_BLACKOUT' ? '#ef5350' : '#ffb300',
+                            border: scheduleForAppConfig.mode === 'TOTAL_BLACKOUT' ? '1px solid rgba(239,83,80,0.3)' : '1px solid rgba(255,179,0,0.3)'
+                          }}>
+                            {scheduleForAppConfig.mode === 'TOTAL_BLACKOUT' ? 'Blackout' : 'Smart Shield'}
+                          </span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleForAppConfig(null)}
+                    style={{ height:40, borderRadius:10, border:'none', background:'#4caf50', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ══ ANALYTICS ══ */}
+            {screen === 'analytics' && (
+              <div style={{ flex:1, padding:'14px 16px', overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Period Selector */}
+                <div style={{ display:'flex', gap:8 }}>
+                  {[['today','Today'],['week','Last 7 Days'],['month','Last 30 Days']].map(([key, label]) => {
+                    const sel = analyticsPeriod === key;
+                    return (
+                      <button key={key} onClick={()=>setAnalyticsPeriod(key)} style={{
+                        padding:'6px 14px', borderRadius:20, border:`1px solid ${sel?'#4caf50':'#333'}`,
+                        background: sel ? 'rgba(76,175,80,0.15)' : 'var(--surface)',
+                        color: sel ? '#4caf50' : '#888', fontSize:12, fontWeight: sel ? 700 : 500, cursor:'pointer'
+                      }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 🚨 Leak Radar & Tracker Shield */}
+                <div style={{ background:'#1e1719', border:'1px solid rgba(239,83,80,0.25)', borderRadius:16, padding:16, display:'flex', flexDirection:'column', gap:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <div style={{ width:34, height:34, borderRadius:17, background:'rgba(239,83,80,0.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <Shield size={18} color='#ef5350' />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>Leak Radar & Trackers</div>
+                        <div style={{ fontSize:11, color:'#888' }}>Real-time background shield</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, color:'#4caf50', background:'rgba(76,175,80,0.15)', padding:'3px 8px', borderRadius:10 }}>
+                      ● Active
+                    </span>
+                  </div>
+
+                  <div style={{ display:'flex', gap:10 }}>
+                    <div style={{ flex:1, background:'#261d20', borderRadius:12, padding:12 }}>
+                      <div style={{ fontSize:11, color:'#888' }}>Blocked Pings</div>
+                      <div style={{ fontSize:18, fontWeight:700, color:'#ef5350', marginTop:4 }}>1,480</div>
+                    </div>
+                    <div style={{ flex:1, background:'#261d20', borderRadius:12, padding:12 }}>
+                      <div style={{ fontSize:11, color:'#888' }}>Est. Data Saved</div>
+                      <div style={{ fontSize:18, fontWeight:700, color:'#4caf50', marginTop:4 }}>86 MB</div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize:11.5, color:'#888', fontWeight:500 }}>
+                    Top Background Offenders Today:
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                    {[
+                      { name: 'Instagram', attempts: 642 },
+                      { name: 'Facebook Services', attempts: 489 },
+                      { name: 'TikTok / ByteDance', attempts: 349 },
+                    ].map((app, i) => (
+                      <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12.5 }}>
+                        <span style={{ color:'#f0f0f0' }}>{app.name}</span>
+                        <span style={{ color:'#ef5350', fontWeight:700, fontSize:11.5 }}>{app.attempts} attempts cut</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hero Metric Cards */}
+                <div style={{ display:'flex', gap:10 }}>
+                  <div style={{ flex:1, background:'#1b2e1e', border:'1px solid rgba(76,175,80,0.3)', borderRadius:14, padding:14 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, color:'#4caf50', fontSize:12, fontWeight:600 }}>
+                      <Shield size={16} /> Data Saved
+                    </div>
+                    <div style={{ fontSize:22, fontWeight:700, color:'#fff', marginTop:8 }}>
+                      {analyticsPeriod === 'today' ? '184.2 MB' : analyticsPeriod === 'week' ? '1.24 GB' : '4.85 GB'}
+                    </div>
+                    <div style={{ fontSize:10, color:'#888', marginTop:2 }}>Est. background freeze</div>
+                  </div>
+
+                  <div style={{ flex:1, background:'#2e2619', border:'1px solid rgba(255,160,0,0.3)', borderRadius:14, padding:14 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, color:'#ffb300', fontSize:12, fontWeight:600 }}>
+                      <Zap size={16} /> Pings Blocked
+                    </div>
+                    <div style={{ fontSize:22, fontWeight:700, color:'#fff', marginTop:8 }}>
+                      {analyticsPeriod === 'today' ? '1,280' : analyticsPeriod === 'week' ? '8,960' : '38,400'}
+                    </div>
+                    <div style={{ fontSize:10, color:'#888', marginTop:2 }}>Background leaks cut</div>
+                  </div>
+                </div>
+
+                {/* Total Traffic & Ratio Bar */}
+                <div style={{ background:'var(--surface)', border:'1px solid var(--divider)', borderRadius:14, padding:16 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontSize:12, color:'#888' }}>Total Network Monitored</div>
+                      <div style={{ fontSize:22, fontWeight:700, color:'#f0f0f0', marginTop:2 }}>
+                        {analyticsPeriod === 'today' ? '2.14 GB' : analyticsPeriod === 'week' ? '14.8 GB' : '58.2 GB'}
+                      </div>
+                    </div>
+                    <Activity size={24} color="#64b5f6"/>
+                  </div>
+                  
+                  {/* Visual Split Bar */}
+                  <div style={{ height:8, borderRadius:4, background:'#333', overflow:'hidden', display:'flex', marginTop:14 }}>
+                    <div style={{ width:'74%', background:'#64b5f6' }}/>
+                    <div style={{ width:'26%', background:'#ffb300' }}/>
+                  </div>
+
+                  <div style={{ display:'flex', justifyContent:'space-between', marginTop:10, fontSize:12 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, color:'#f0f0f0' }}>
+                      <div style={{ width:8, height:8, borderRadius:4, background:'#64b5f6' }}/>
+                      WiFi: {analyticsPeriod === 'today' ? '1.58 GB' : analyticsPeriod === 'week' ? '11.0 GB' : '43.1 GB'} (74%)
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, color:'#f0f0f0' }}>
+                      <div style={{ width:8, height:8, borderRadius:4, background:'#ffb300' }}/>
+                      Mobile: {analyticsPeriod === 'today' ? '560 MB' : analyticsPeriod === 'week' ? '3.8 GB' : '15.1 GB'} (26%)
+                    </div>
+                  </div>
+                </div>
+
+                {/* App Data Usage Breakdown */}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:4 }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:'#f0f0f0' }}>App Data Breakdown</div>
+                  <div style={{ fontSize:11, color:'#888' }}>Ranked by bandwidth</div>
+                </div>
+
+                <div style={{ display:'flex', flexDirection:'column', gap:8, paddingBottom:20 }}>
+                  {[
+                    { name:'YouTube', icon:'▶️', total:'680 MB', wifi:'560 MB', data:'120 MB', pct: 90, blocked: false },
+                    { name:'Instagram', icon:'📸', total:'308 MB', wifi:'240 MB', data:'68 MB', pct: 65, blocked: true },
+                    { name:'Netflix', icon:'🎬', total:'290 MB', wifi:'240 MB', data:'50 MB', pct: 60, blocked: false },
+                    { name:'BGMI / PUBG', icon:'🎮', total:'225 MB', wifi:'180 MB', data:'45 MB', pct: 50, blocked: true },
+                    { name:'WhatsApp', icon:'💬', total:'107 MB', wifi:'85 MB', data:'22 MB', pct: 35, blocked: true },
+                    { name:'Spotify', icon:'🎧', total:'95 MB', wifi:'75 MB', data:'20 MB', pct: 25, blocked: false },
+                  ].map(app => (
+                    <div key={app.name} style={{ background:'var(--surface)', border:'1px solid var(--divider)', borderRadius:12, padding:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <div style={{ width:34, height:34, borderRadius:8, background:'#262626', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
+                          {app.icon}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                            <span style={{ fontSize:14, fontWeight:500, color:'#f0f0f0' }}>{app.name}</span>
+                            {app.blocked && (
+                              <span style={{ fontSize:9, fontWeight:700, color:'#ef5350', background:'rgba(239,83,80,0.18)', padding:'1px 5px', borderRadius:4 }}>
+                                RESTRICTED
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:2 }}>
+                            WiFi: {app.wifi}  •  Data: {app.data}
+                          </div>
+                        </div>
+                        <div style={{ fontSize:13, fontWeight:700, color:'#f0f0f0' }}>{app.total}</div>
+                      </div>
+                      <div style={{ height:4, borderRadius:2, background:'#262626', overflow:'hidden', marginTop:8 }}>
+                        <div style={{ width:`${app.pct}%`, height:'100%', background: app.blocked ? '#ef5350' : '#4caf50' }}/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* ══ LOGS ══ */}
@@ -801,8 +1597,20 @@ export default function App() {
                   <Pref label="Block app notifications" sub="Auto-silence alerts, popups & vibrations when app is restricted" right={<Toggle on={blockNotifs} onToggle={()=>setBlockNotifs(p=>!p)}/>} divider={false}/>
                 </div>
 
-                <Sec label="Display"/>
+                <Sec label="Security Shield (App Lock)"/>
                 <div style={{ background:'var(--surface)', borderTop:'1px solid var(--divider)', borderBottom:'1px solid var(--divider)' }}>
+                  <Pref label="Biometric & PIN Lock" sub="Require Fingerprint, Face, or PIN to access NetCordon" right={<Toggle on={appLockEnabled} onToggle={()=>{
+                    const next = !appLockEnabled;
+                    setAppLockEnabled(next);
+                    if (next) setIsLocked(true);
+                    pushLog('I','Security',`Biometric & PIN Lock ${next?'Enabled':'Disabled'}`);
+                  }}/>}/>
+                  <Pref label="Lock on screen off" sub="Re-lock NetCordon automatically when screen turns off" right={<Toggle on={lockOnScreenOff} onToggle={()=>setLockOnScreenOff(p=>!p)}/>} divider={false}/>
+                </div>
+
+                <Sec label="Display & Theme"/>
+                <div style={{ background:'var(--surface)', borderTop:'1px solid var(--divider)', borderBottom:'1px solid var(--divider)' }}>
+                  <Pref label="Dark Mode" sub={darkMode ? "High-contrast dark theme enabled" : "Material 3 light theme enabled"} right={<Toggle on={darkMode} onToggle={()=>setDarkMode(p=>!p)}/>} divider={true}/>
                   <Pref label="Show package names" sub="Display package name below each app" right={<Toggle on={showPkg} onToggle={()=>setShowPkg(p=>!p)}/>} divider={false}/>
                 </div>
 
@@ -836,6 +1644,17 @@ export default function App() {
                   />
                 </div>
 
+                <Sec label="Guide & Tour"/>
+                <div style={{ background:'var(--surface)', borderTop:'1px solid var(--divider)', borderBottom:'1px solid var(--divider)' }}>
+                  <Pref
+                    label="App Walkthrough"
+                    sub="Replay interactive feature tour & isolation guide"
+                    onClick={() => setShowWalkthrough(true)}
+                    right={<ChevronRight size={18} color='var(--dim)'/>}
+                    divider={false}
+                  />
+                </div>
+
                 <Sec label="About"/>
                 <div style={{ background:'var(--surface)', borderTop:'1px solid var(--divider)', borderBottom:'1px solid var(--divider)', marginBottom: 30 }}>
                   <Pref label="NetCordon" sub="Version 1.0 · Shizuku-powered user app firewall" divider={false}/>
@@ -845,6 +1664,239 @@ export default function App() {
           </>
         )}
       </div>
+
+      {/* ── Bottom Navigation Bar (Android M3 style) ── */}
+      {setupDone && !showWalkthrough && !isLocked && (
+        <div style={{ height:60, background:'#171717', borderTop:'1px solid #242424', display:'flex', alignItems:'center', justifyContent:'space-around', flexShrink:0, zIndex:8 }}>
+          {[
+            { id:'home',      label:'Firewall',  icon: Shield },
+            { id:'schedules', label:'Schedules', icon: Clock },
+            { id:'analytics', label:'Analytics', icon: BarChart3 },
+            { id:'logs',      label:'Logs',      icon: Activity },
+            { id:'settings',  label:'Settings',  icon: Sliders },
+          ].map(tab => {
+            const IconComp = tab.icon;
+            const sel = screen === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={()=>setScreen(tab.id)}
+                style={{
+                  background: 'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column',
+                  alignItems:'center', justifyContent:'center', gap:3, flex:1, height:'100%',
+                  color: sel ? '#4caf50' : '#888'
+                }}
+              >
+                <div style={{
+                  width: sel ? 42 : 'auto', height: 26, borderRadius: 13,
+                  background: sel ? 'rgba(76,175,80,0.18)' : 'transparent',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  transition: 'background 0.2s ease'
+                }}>
+                  <IconComp size={19} color={sel ? '#4caf50' : '#888'} />
+                </div>
+                <span style={{ fontSize:10, fontWeight: sel ? 700 : 500 }}>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Biometric & PIN Security Lock Screen ── */}
+      {setupDone && !showWalkthrough && isLocked && (
+        <div style={{
+          position:'absolute', inset:0, zIndex:99, background:'#121212',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24
+        }}>
+          <div style={{
+            width:100, height:100, borderRadius:50, background:'rgba(76,175,80,0.15)',
+            border:'1px solid rgba(76,175,80,0.3)', display:'flex', alignItems:'center', justifyContent:'center',
+            marginBottom:20
+          }}>
+            <Lock size={46} color='#4caf50' />
+          </div>
+          <div style={{ fontSize:22, fontWeight:700, color:'#fff', marginBottom:8 }}>NetCordon Locked</div>
+          <div style={{ fontSize:13, color:'#888', textAlign:'center', lineHeight:1.5, maxWidth:260, marginBottom:32 }}>
+            Security Shield is active.<br/>Authenticate with Biometrics or PIN to continue.
+          </div>
+          <button
+            onClick={() => {
+              setIsLocked(false);
+              pushLog('I','Security','Biometric unlock successful');
+            }}
+            style={{
+              width:'100%', maxWidth:280, height:48, borderRadius:12, border:'none',
+              background:'#4caf50', color:'#fff', fontSize:14, fontWeight:700,
+              display:'flex', alignItems:'center', justifyContent:'center', gap:8, cursor:'pointer'
+            }}
+          >
+            <Fingerprint size={20} />
+            Unlock with Biometrics / PIN
+          </button>
+        </div>
+      )}
+
+      {/* ── 3-Tier App Isolation Policy Bottom Sheet ── */}
+      {selectedAppForPolicy && (
+        <>
+          {/* Backdrop */}
+          <div
+            onClick={() => setSelectedAppForPolicy(null)}
+            style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.65)', zIndex:90, backdropFilter:'blur(2px)' }}
+          />
+
+          {/* Bottom Sheet Container */}
+          <div style={{
+            position:'absolute', bottom:0, left:0, right:0, zIndex:91,
+            background:'#1c1c1c', borderTopLeftRadius:20, borderTopRightRadius:20,
+            borderTop:'1px solid #333', padding:'16px 20px 24px', display:'flex', flexDirection:'column', gap:14,
+            boxShadow:'0 -8px 32px rgba(0,0,0,0.7)',
+            userSelect:'none', WebkitUserSelect:'none', WebkitTapHighlightColor:'transparent'
+          }}>
+            {/* Drag Handle */}
+            <div style={{ width:36, height:4, borderRadius:2, background:'#444', margin:'0 auto' }} />
+
+            {/* App Header */}
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:48, height:48, borderRadius:12, background:'#262626', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>
+                {selectedAppForPolicy.icon}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:17, fontWeight:700, color:'#f0f0f0', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {selectedAppForPolicy.name}
+                </div>
+                <div style={{ fontSize:11, color:'#888', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:1 }}>
+                  {selectedAppForPolicy.id}
+                </div>
+              </div>
+              {/* Current Mode Badge */}
+              {blackoutApps.has(selectedAppForPolicy.id) ? (
+                <div style={{ fontSize:10, fontWeight:700, color:'#ef5350', background:'rgba(239,83,80,0.18)', border:'1px solid rgba(239,83,80,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                  BLACKOUT
+                </div>
+              ) : (selectedAppForPolicy.wifiBlocked || selectedAppForPolicy.dataBlocked) ? (
+                <div style={{ fontSize:10, fontWeight:700, color:'#ffb300', background:'rgba(255,179,0,0.18)', border:'1px solid rgba(255,179,0,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                  SMART SHIELD
+                </div>
+              ) : (
+                <div style={{ fontSize:10, fontWeight:700, color:'#4caf50', background:'rgba(76,175,80,0.18)', border:'1px solid rgba(76,175,80,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                  ALLOWED
+                </div>
+              )}
+            </div>
+
+            {/* 3 Policy Mode Cards */}
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:4 }}>
+              {/* Mode 1: Always Allowed */}
+              {(() => {
+                const isSel = !blackoutApps.has(selectedAppForPolicy.id) && !selectedAppForPolicy.wifiBlocked && !selectedAppForPolicy.dataBlocked;
+                return (
+                  <div
+                    onClick={() => {
+                      setBlackoutApps(p => { const n = new Set(p); n.delete(selectedAppForPolicy.id); return n; });
+                      setApps(p => p.map(a => a.id === selectedAppForPolicy.id ? { ...a, wifiBlocked:false, dataBlocked:false } : a));
+                      setSelectedAppForPolicy(p => ({ ...p, wifiBlocked:false, dataBlocked:false }));
+                      pushLog('I', 'Policy', `${selectedAppForPolicy.name} -> Always Allowed`);
+                    }}
+                    style={{
+                      padding:'14px 16px', borderRadius:14, cursor:'pointer',
+                      background: isSel ? 'rgba(76,175,80,0.12)' : '#242424',
+                      border: `1px solid ${isSel ? '#4caf50' : '#333'}`,
+                      display:'flex', alignItems:'center', gap:14
+                    }}
+                  >
+                    <div style={{ width:36, height:36, borderRadius:18, background: isSel ? 'rgba(76,175,80,0.22)' : '#2c2c2c', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <CheckCircle2 size={19} color={isSel ? '#4caf50' : '#888'} />
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:15, fontWeight:600, color: isSel ? '#fff' : '#eee' }}>Always Allowed</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Normal internet access</div>
+                    </div>
+                    <div style={{ width:18, height:18, borderRadius:9, border:`2px solid ${isSel ? '#4caf50' : '#555'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      {isSel && <div style={{ width:8, height:8, borderRadius:4, background:'#4caf50' }} />}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Mode 2: Smart Shield */}
+              {(() => {
+                const isSel = !blackoutApps.has(selectedAppForPolicy.id) && (selectedAppForPolicy.wifiBlocked || selectedAppForPolicy.dataBlocked);
+                return (
+                  <div
+                    onClick={() => {
+                      setBlackoutApps(p => { const n = new Set(p); n.delete(selectedAppForPolicy.id); return n; });
+                      setApps(p => p.map(a => a.id === selectedAppForPolicy.id ? { ...a, wifiBlocked:true, dataBlocked:true } : a));
+                      setSelectedAppForPolicy(p => ({ ...p, wifiBlocked:true, dataBlocked:true }));
+                      pushLog('W', 'Policy', `${selectedAppForPolicy.name} -> Smart Shield`);
+                    }}
+                    style={{
+                      padding:'14px 16px', borderRadius:14, cursor:'pointer',
+                      background: isSel ? 'rgba(255,179,0,0.12)' : '#242424',
+                      border: `1px solid ${isSel ? '#ffb300' : '#333'}`,
+                      display:'flex', alignItems:'center', gap:14
+                    }}
+                  >
+                    <div style={{ width:36, height:36, borderRadius:18, background: isSel ? 'rgba(255,179,0,0.22)' : '#2c2c2c', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <Shield size={19} color={isSel ? '#ffb300' : '#888'} />
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:15, fontWeight:600, color: isSel ? '#fff' : '#eee' }}>Smart Shield</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Cut on close • Resume when open</div>
+                    </div>
+                    <div style={{ width:18, height:18, borderRadius:9, border:`2px solid ${isSel ? '#ffb300' : '#555'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      {isSel && <div style={{ width:8, height:8, borderRadius:4, background:'#ffb300' }} />}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Mode 3: Total Blackout */}
+              {(() => {
+                const isSel = blackoutApps.has(selectedAppForPolicy.id);
+                return (
+                  <div
+                    onClick={() => {
+                      setBlackoutApps(p => new Set(p).add(selectedAppForPolicy.id));
+                      setApps(p => p.map(a => a.id === selectedAppForPolicy.id ? { ...a, wifiBlocked:true, dataBlocked:true } : a));
+                      setSelectedAppForPolicy(p => ({ ...p, wifiBlocked:true, dataBlocked:true }));
+                      pushLog('E', 'Policy', `${selectedAppForPolicy.name} -> Total Blackout`);
+                    }}
+                    style={{
+                      padding:'14px 16px', borderRadius:14, cursor:'pointer',
+                      background: isSel ? 'rgba(239,83,80,0.12)' : '#242424',
+                      border: `1px solid ${isSel ? '#ef5350' : '#333'}`,
+                      display:'flex', alignItems:'center', gap:14
+                    }}
+                  >
+                    <div style={{ width:36, height:36, borderRadius:18, background: isSel ? 'rgba(239,83,80,0.22)' : '#2c2c2c', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <Ban size={19} color={isSel ? '#ef5350' : '#888'} />
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:15, fontWeight:600, color: isSel ? '#fff' : '#eee' }}>Total Blackout</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Block all internet • Zero ads</div>
+                    </div>
+                    <div style={{ width:18, height:18, borderRadius:9, border:`2px solid ${isSel ? '#ef5350' : '#555'}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      {isSel && <div style={{ width:8, height:8, borderRadius:4, background:'#ef5350' }} />}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Done Button */}
+            <button
+              onClick={() => setSelectedAppForPolicy(null)}
+              style={{
+                width:'100%', height:46, borderRadius:12, border:'none', marginTop:6,
+                background:'#4caf50', color:'#fff', fontSize:15, fontWeight:700, cursor:'pointer'
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

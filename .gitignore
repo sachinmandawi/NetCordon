@@ -34,3 +34,5 @@ android_project/**/*.iml
 # Sensitive local deploy scripts
 deploy_github.ps1
 upload_release.ps1
+
+*.apk

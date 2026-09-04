@@ -1,4 +1,4 @@
-package com.smartfirewall.shizuku
+﻿package com.sachinmandawi.netcordon
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,8 +8,11 @@ import android.util.Log
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-            Log.d("BootReceiver", "Boot completed broadcast received")
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
+            intent.action == "android.intent.action.QUICKBOOT_POWERON" ||
+            intent.action == "com.htc.intent.action.QUICKBOOT_POWERON" ||
+            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            Log.d("BootReceiver", "Boot or package update broadcast received: ${intent.action}")
             if (PrefsManager.isStartOnBoot(context) && PrefsManager.isServiceEnabled(context)) {
                 val serviceIntent = Intent(context, AppShieldService::class.java).apply {
                     action = AppShieldService.ACTION_START
@@ -24,6 +27,14 @@ class BootReceiver : BroadcastReceiver() {
                 } catch (e: Exception) {
                     Log.e("BootReceiver", "Failed to start service on boot", e)
                 }
+            }
+
+            // Restore all active firewall schedules
+            try {
+                ScheduleReceiver.rescheduleAll(context)
+                Log.d("BootReceiver", "Firewall schedules restored after boot")
+            } catch (e: Exception) {
+                Log.e("BootReceiver", "Failed to restore schedules on boot", e)
             }
         }
     }
