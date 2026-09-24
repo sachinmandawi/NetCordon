@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -27,6 +27,17 @@ class BootReceiver : BroadcastReceiver() {
                 } catch (e: Exception) {
                     Log.e("BootReceiver", "Failed to start service on boot", e)
                 }
+            }
+
+            // Auto-start Floating Speedometer overlay if enabled and overlay permission granted
+            try {
+                if (PrefsManager.isFloatingSpeedometerEnabled(context) &&
+                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || android.provider.Settings.canDrawOverlays(context))) {
+                    FloatingSpeedometerService.start(context)
+                    Log.d("BootReceiver", "FloatingSpeedometerService started after boot")
+                }
+            } catch (e: Exception) {
+                Log.e("BootReceiver", "Failed to start FloatingSpeedometerService on boot", e)
             }
 
             // Restore all active firewall schedules

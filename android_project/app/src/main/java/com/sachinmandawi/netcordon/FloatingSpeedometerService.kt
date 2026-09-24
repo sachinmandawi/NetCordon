@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.app.Service
 import android.content.Context
@@ -38,11 +38,18 @@ class FloatingSpeedometerService : Service() {
     private lateinit var containerLayout: LinearLayout
     private val appNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
+    private var leakerRefreshTicks = 0
+
     private fun getAppName(packageName: String): String {
         return appNameCache.getOrPut(packageName) {
             try {
                 val pm = packageManager
-                val ai = pm.getApplicationInfo(packageName, 0)
+                val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    pm.getApplicationInfo(packageName, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    pm.getApplicationInfo(packageName, 0)
+                }
                 val label = pm.getApplicationLabel(ai).toString()
                 if (label.length > 12) label.take(11) + "…" else label
             } catch (e: Exception) {
@@ -248,28 +255,31 @@ class FloatingSpeedometerService : Service() {
 
         speedTextView.text = "↓ ${formatSpeed(rxSpeed)}  ↑ ${formatSpeed(txSpeed)}"
 
-        val topLeakers = PrefsManager.getTodayBlockedAttempts(this)
-        if (topLeakers.isNotEmpty()) {
-            val topApp = topLeakers.maxByOrNull { it.value }
-            if (topApp != null && topApp.value > 0) {
-                val appLabel = getAppName(topApp.key)
-                leakerBadgeView.text = "🚨 $appLabel (${topApp.value})"
-                leakerBadgeView.setTextColor(Color.parseColor("#FF5252"))
+        if (leakerRefreshTicks % 5 == 0) {
+            val topLeakers = PrefsManager.getTodayBlockedAttempts(this)
+            if (topLeakers.isNotEmpty()) {
+                val topApp = topLeakers.maxByOrNull { it.value }
+                if (topApp != null && topApp.value > 0) {
+                    val appLabel = getAppName(topApp.key)
+                    leakerBadgeView.text = "🚨 $appLabel (${topApp.value})"
+                    leakerBadgeView.setTextColor(Color.parseColor("#FF5252"))
+                } else {
+                    leakerBadgeView.text = "🛡️ SHIELD"
+                    leakerBadgeView.setTextColor(Color.parseColor("#00E676"))
+                }
             } else {
                 leakerBadgeView.text = "🛡️ SHIELD"
                 leakerBadgeView.setTextColor(Color.parseColor("#00E676"))
             }
-        } else {
-            leakerBadgeView.text = "🛡️ SHIELD"
-            leakerBadgeView.setTextColor(Color.parseColor("#00E676"))
         }
+        leakerRefreshTicks++
     }
 
     private fun formatSpeed(bytesPerSec: Long): String {
         return when {
             bytesPerSec < 1024 -> "$bytesPerSec B/s"
             bytesPerSec < 1024 * 1024 -> "${bytesPerSec / 1024} KB/s"
-            else -> String.format("%.1f MB/s", bytesPerSec / (1024f * 1024f))
+            else -> String.format(java.util.Locale.US, "%.1f MB/s", bytesPerSec / (1024f * 1024f))
         }
     }
 

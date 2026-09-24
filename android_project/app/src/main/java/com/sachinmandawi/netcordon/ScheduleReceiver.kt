@@ -64,14 +64,30 @@ class ScheduleReceiver : BroadcastReceiver() {
             )
 
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, startTime, startPI)
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, endPI)
+                val canExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    alarmManager.canScheduleExactAlarms()
                 } else {
-                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, startTime, startPI)
-                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, endTime, endPI)
+                    true
                 }
-                Log.d(TAG, "Scheduled ${schedule.title} Start: $startTime, End: $endTime")
+                if (canExact) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, startTime, startPI)
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, endPI)
+                    } else {
+                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, startTime, startPI)
+                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, endTime, endPI)
+                    }
+                    Log.d(TAG, "Scheduled exact ${schedule.title} Start: $startTime, End: $endTime")
+                } else {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, startTime, startPI)
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endTime, endPI)
+                    } else {
+                        alarmManager.set(AlarmManager.RTC_WAKEUP, startTime, startPI)
+                        alarmManager.set(AlarmManager.RTC_WAKEUP, endTime, endPI)
+                    }
+                    Log.d(TAG, "Scheduled inexact ${schedule.title} Start: $startTime, End: $endTime")
+                }
             } catch (e: SecurityException) {
                 Log.w(TAG, "Missing exact alarm permission, falling back to setAndAllowWhileIdle", e)
                 try {
@@ -117,10 +133,10 @@ class ScheduleReceiver : BroadcastReceiver() {
             )
             if (endPI != null) alarmManager.cancel(endPI)
 
-            // Release any active firewall rules applied by this schedule
+            // Release any active firewall rules applied by this schedule while respecting other active schedules
             val schedule = PrefsManager.getSchedules(context).find { it.id == scheduleId }
             if (schedule != null) {
-                PrefsManager.restoreBaseFirewallRules(context, schedule.targetPackages)
+                PrefsManager.restoreBaseFirewallRules(context, schedule.targetPackages, excludingScheduleId = scheduleId)
                 notifyService(context)
             }
         }
@@ -188,27 +204,38 @@ class ScheduleReceiver : BroadcastReceiver() {
 
         Log.d(TAG, "Alarm fired: ${intent.action} for schedule: ${schedule.title}")
 
-        // Acquire temporary WakeLock to ensure CPU execution through Doze mode
+        var wakeLock: android.os.PowerManager.WakeLock? = null
         try {
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-            val wakeLock = powerManager?.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "NetCordon:ScheduleWakeLock")
-            wakeLock?.acquire(10_000L) // 10-second safe timeout for service handoff
+            wakeLock = powerManager?.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "NetCordon:ScheduleWakeLock")?.apply {
+                setReferenceCounted(false)
+                acquire(10_000L)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "WakeLock error", e)
         }
 
-        when (intent.action) {
-            ACTION_TRIGGER_START -> {
-                for (pkg in schedule.targetPackages) {
-                    PrefsManager.applyScheduledIsolationMode(context, pkg, schedule.mode)
+        try {
+            when (intent.action) {
+                ACTION_TRIGGER_START -> {
+                    for (pkg in schedule.targetPackages) {
+                        PrefsManager.applyScheduledIsolationMode(context, pkg, schedule.mode)
+                    }
+                    notifyService(context)
+                    schedule(context, schedule)
                 }
-                notifyService(context)
-                schedule(context, schedule)
+                ACTION_TRIGGER_END -> {
+                    PrefsManager.restoreBaseFirewallRules(context, schedule.targetPackages, excludingScheduleId = schedule.id)
+                    notifyService(context)
+                    schedule(context, schedule)
+                }
             }
-            ACTION_TRIGGER_END -> {
-                PrefsManager.restoreBaseFirewallRules(context, schedule.targetPackages)
-                notifyService(context)
-                schedule(context, schedule)
+        } finally {
+            try {
+                if (wakeLock?.isHeld == true) {
+                    wakeLock.release()
+                }
+            } catch (_: Exception) {
             }
         }
     }

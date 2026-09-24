@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -247,14 +247,32 @@ object PrefsManager {
         getPrefs(context).edit().putStringSet(KEY_BLACKOUT_PACKAGES, HashSet(packages)).apply()
     }
 
+    fun computeEffectiveIsolationMode(
+        isBlackout: Boolean,
+        isSmartShield: Boolean,
+        isWifiBlocked: Boolean,
+        isDataBlocked: Boolean,
+        isWifiActive: Boolean,
+        isForeground: Boolean
+    ): AppIsolationMode {
+        if (isBlackout) return AppIsolationMode.TOTAL_BLACKOUT
+        if (isWifiBlocked && isDataBlocked) return AppIsolationMode.TOTAL_BLACKOUT
+
+        val isBlockedOnCurrentNet = (isWifiActive && isWifiBlocked) || (!isWifiActive && isDataBlocked)
+        if (isBlockedOnCurrentNet) return AppIsolationMode.TOTAL_BLACKOUT
+
+        return if (isSmartShield) {
+            if (isForeground) AppIsolationMode.ALLOWED else AppIsolationMode.SMART_SHIELD
+        } else {
+            AppIsolationMode.ALLOWED
+        }
+    }
+
     fun getAppIsolationMode(context: Context, packageName: String): AppIsolationMode {
         val blackout = getBlackoutPackages(context)
         if (blackout.contains(packageName)) return AppIsolationMode.TOTAL_BLACKOUT
         val smart = getSmartShieldPackages(context)
         if (smart.contains(packageName)) return AppIsolationMode.SMART_SHIELD
-        val wifi = getWifiBlockedPackages(context)
-        val data = getDataBlockedPackages(context)
-        if (wifi.contains(packageName) || data.contains(packageName)) return AppIsolationMode.SMART_SHIELD
         return AppIsolationMode.ALLOWED
     }
 
@@ -307,8 +325,6 @@ object PrefsManager {
         when (mode) {
             AppIsolationMode.ALLOWED -> {
                 smart.remove(packageName)
-                wifi.remove(packageName)
-                data.remove(packageName)
                 blackout.remove(packageName)
             }
             AppIsolationMode.SMART_SHIELD -> {
@@ -331,12 +347,20 @@ object PrefsManager {
 
     /**
      * When a schedule ends or is cancelled, restores all packages in [packages]
-     * to their permanent base firewall configuration.
+     * to another currently active schedule's mode or their permanent base firewall configuration.
      */
-    fun restoreBaseFirewallRules(context: Context, packages: Set<String>) {
+    fun restoreBaseFirewallRules(context: Context, packages: Set<String>, excludingScheduleId: String? = null) {
+        val activeSchedules = getSchedules(context).filter {
+            it.isEnabled && it.id != excludingScheduleId && it.isCurrentlyActive()
+        }
         for (pkg in packages) {
-            val baseMode = getBaseAppIsolationMode(context, pkg)
-            applyScheduledIsolationMode(context, pkg, baseMode)
+            val overriding = activeSchedules.firstOrNull { it.targetPackages.contains(pkg) }
+            if (overriding != null) {
+                applyScheduledIsolationMode(context, pkg, overriding.mode)
+            } else {
+                val baseMode = getBaseAppIsolationMode(context, pkg)
+                applyScheduledIsolationMode(context, pkg, baseMode)
+            }
         }
     }
 
@@ -788,7 +812,6 @@ object PrefsManager {
 
     fun shouldShowInterstitial(context: Context, minIntervalSeconds: Long = 20): Boolean {
         if (isAdFreeActive(context)) return false
-        if (AdMobManager.USE_TEST_ADS) return true
         val lastShown = getPrefs(context).getLong(KEY_LAST_INTERSTITIAL, 0L)
         val elapsed = System.currentTimeMillis() - lastShown
         return elapsed >= (minIntervalSeconds * 1000L)
@@ -837,7 +860,11 @@ data class FirewallSchedule(
         val startMinutes = startHour * 60 + startMinute
         val endMinutes = endHour * 60 + endMinute
 
-        return if (startMinutes <= endMinutes) {
+        if (startMinutes == endMinutes) {
+            return daysOfWeek.contains(currentDay)
+        }
+
+        return if (startMinutes < endMinutes) {
             daysOfWeek.contains(currentDay) && currentMinutes in startMinutes until endMinutes
         } else {
             if (currentMinutes >= startMinutes) {

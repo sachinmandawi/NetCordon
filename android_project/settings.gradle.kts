@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SmartNetShield"
+rootProject.name = "NetCordon"
 include(":app")

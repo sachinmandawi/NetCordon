@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.content.Context
 import android.content.Intent
@@ -58,9 +58,9 @@ object AppUpdateManager {
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 return@withContext UpdateCheckResult(
                     isUpdateAvailable = false,
-                    latestVersion = currentVersion,
-                    currentVersion = currentVersion,
-                    errorMessage = "GitHub API response: "
+                    latestVersion = "v$currentVersion",
+                    currentVersion = "v$currentVersion",
+                    errorMessage = "GitHub API response: $responseCode"
                 )
             }
 
@@ -93,8 +93,8 @@ object AppUpdateManager {
 
             UpdateCheckResult(
                 isUpdateAvailable = isNewer,
-                latestVersion = if (latestVersion.isNotEmpty()) "v" else currentVersion,
-                currentVersion = "v",
+                latestVersion = if (latestVersion.isNotEmpty()) "v$latestVersion" else "v$currentVersion",
+                currentVersion = "v$currentVersion",
                 releaseNotes = releaseNotes,
                 downloadUrl = downloadUrl,
                 htmlUrl = htmlUrl
@@ -102,14 +102,14 @@ object AppUpdateManager {
         } catch (e: Exception) {
             UpdateCheckResult(
                 isUpdateAvailable = false,
-                latestVersion = currentVersion,
-                currentVersion = "v",
+                latestVersion = "v$currentVersion",
+                currentVersion = "v$currentVersion",
                 errorMessage = e.localizedMessage ?: "Failed to connect to update server"
             )
         }
     }
 
-    private fun isVersionNewer(latest: String, current: String): Boolean {
+    internal fun isVersionNewer(latest: String, current: String): Boolean {
         if (latest.isBlank()) return false
         val cleanLatest = latest.removePrefix("v").removePrefix("V").trim()
         val cleanCurrent = current.removePrefix("v").removePrefix("V").trim()
@@ -199,7 +199,7 @@ object AppUpdateManager {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (!context.packageManager.canRequestPackageInstalls()) {
                     val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                        data = Uri.parse("package:")
+                        data = Uri.parse("package:${context.packageName}")
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     context.startActivity(intent)
@@ -209,7 +209,7 @@ object AppUpdateManager {
 
             val apkUri = FileProvider.getUriForFile(
                 context,
-                ".fileprovider",
+                "${context.packageName}.fileprovider",
                 apkFile
             )
 
@@ -219,13 +219,7 @@ object AppUpdateManager {
             }
             context.startActivity(installIntent)
         } catch (e: Exception) {
-            // If direct FileProvider fails, attempt opening via system action
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.fromFile(apkFile)).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(intent)
-            } catch (_: Exception) {}
+            android.util.Log.e("AppUpdateManager", "Failed to install APK via FileProvider", e)
         }
     }
 }

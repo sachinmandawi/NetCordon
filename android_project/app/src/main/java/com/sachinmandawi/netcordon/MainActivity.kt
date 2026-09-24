@@ -417,7 +417,7 @@ class MainActivity : FragmentActivity() {
 
             CompositionLocalProvider(LocalThemeColors provides themeColors) {
                 MaterialTheme(colorScheme = colorScheme) {
-                    val showSplash = remember { mutableStateOf(true) }
+                    val showSplash = androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(true) }
 
                     LaunchedEffect(showSplash.value, isUnlocked.value) {
                         if (!showSplash.value && !isUnlocked.value) {
@@ -481,8 +481,11 @@ class MainActivity : FragmentActivity() {
 
     override fun onStop() {
         super.onStop()
-        if (PrefsManager.isAppLockEnabled(this) && PrefsManager.isLockOnScreenOff(this)) {
-            isUnlocked.value = false
+        if (!isChangingConfigurations && PrefsManager.isAppLockEnabled(this) && PrefsManager.isLockOnScreenOff(this)) {
+            val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            if (pm?.isInteractive == false) {
+                isUnlocked.value = false
+            }
         }
     }
 
@@ -532,7 +535,15 @@ fun fetchInstalledApps(ctx: Context): List<AppInfo> {
     val savedWifi = PrefsManager.getWifiBlockedPackages(ctx)
     val savedData = PrefsManager.getDataBlockedPackages(ctx)
     val savedBlackout = PrefsManager.getBlackoutPackages(ctx)
-    return pm.getInstalledApplications(PackageManager.GET_META_DATA)
+    val savedQuotas = PrefsManager.getAllDailyQuotas(ctx)
+    val quotaBlocked = PrefsManager.getQuotaBlockedPackages(ctx)
+    val installedList = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+    } else {
+        @Suppress("DEPRECATION")
+        pm.getInstalledApplications(0)
+    }
+    return installedList
         .filter { (it.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
         .map { ai ->
             val iconBmp = try {
@@ -541,16 +552,17 @@ fun fetchInstalledApps(ctx: Context): List<AppInfo> {
                 null
             }
             val isSmart = savedSmart.contains(ai.packageName)
-            val isBlack = savedBlackout.contains(ai.packageName)
+            val isBlack = savedBlackout.contains(ai.packageName) || quotaBlocked.contains(ai.packageName)
             AppInfo(
-                appName     = pm.getApplicationLabel(ai).toString(),
-                packageName = ai.packageName,
-                uid         = ai.uid,
-                iconBitmap  = iconBmp,
-                wifiBlocked = savedWifi.contains(ai.packageName),
-                dataBlocked = savedData.contains(ai.packageName),
-                isBlackout  = isBlack,
-                isSmartShield = isSmart
+                appName         = pm.getApplicationLabel(ai).toString(),
+                packageName     = ai.packageName,
+                uid             = ai.uid,
+                iconBitmap      = iconBmp,
+                wifiBlocked     = savedWifi.contains(ai.packageName),
+                dataBlocked     = savedData.contains(ai.packageName),
+                isBlackout      = isBlack,
+                isSmartShield   = isSmart,
+                dailyQuotaBytes = savedQuotas[ai.packageName] ?: 0L
             )
         }
         .sortedBy { it.appName.lowercase() }
@@ -699,7 +711,7 @@ fun NetCordonApp(
     }
 
     /* ── Navigation ── */
-    var screen      by remember { mutableStateOf("home") } // home | analytics | logs | settings
+    var screen      by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("home") } // home | analytics | logs | settings
     var searching   by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedAppForPolicy by remember { mutableStateOf<AppInfo?>(null) }
@@ -711,6 +723,10 @@ fun NetCordonApp(
         apps = loaded
         val uidMap = loaded.associate { it.packageName to it.uid }
         PrefsManager.savePackageUidMap(ctx, uidMap)
+        if (PrefsManager.isFloatingSpeedometerEnabled(ctx) &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(ctx))) {
+            FloatingSpeedometerService.start(ctx)
+        }
         withContext(Dispatchers.IO) {
             ShizukuManager.initFirewallFramework(ctx.packageName)
         }
@@ -1049,8 +1065,8 @@ fun NetCordonApp(
                         pushLog("${timestamp()}  I  Rule: Screen Lock Auto-Shield ${if (v) "Enabled" else "Disabled"}")
                     },
                     onAppLockChange = { enabled ->
-                        val act = ctx as? FragmentActivity
-                        if (act != null) {
+                        val act = ctx.findActivity() as? FragmentActivity
+                        if (act != null && BiometricLockManager.canAuthenticate(ctx)) {
                             BiometricLockManager.authenticate(
                                 activity = act,
                                 title = if (enabled) "Enable App Lock" else "Disable App Lock",
@@ -1147,46 +1163,43 @@ fun NetCordonApp(
                     PrefsManager.setAppWifiBlocked(ctx, pkg, wifiBlocked)
                     PrefsManager.setAppDataBlocked(ctx, pkg, dataBlocked)
 
-                    // 2. Save and apply quota
+                    // 2. Save explicit base mode to PrefsManager (never overwrite base mode with temporary quota blackout)
+                    PrefsManager.setAppIsolationMode(ctx, pkg, mode)
                     PrefsManager.setAppDailyQuota(ctx, pkg, quotaBytes)
-                    val (todayStart, todayEnd) = DataUsageManager.getTimeRange("today")
-                    val todayStats = DataUsageManager.getUidStats(ctx, uid, todayStart, todayEnd)
-                    val todayUsedBytes = todayStats.first + todayStats.second + todayStats.third + todayStats.fourth
-                    if (quotaBytes > 0L && todayUsedBytes >= quotaBytes) {
-                        PrefsManager.setAppQuotaBlocked(ctx, pkg, true)
-                    } else {
-                        PrefsManager.setAppQuotaBlocked(ctx, pkg, false)
-                    }
-
-                    // 3. Save explicit mode to PrefsManager (Allowed, Smart Shield, or Total Blackout)
-                    val isQuotaExceeded = (quotaBytes > 0L && todayUsedBytes >= quotaBytes)
-                    val effectiveMode = if (isQuotaExceeded) AppIsolationMode.TOTAL_BLACKOUT else mode
-                    PrefsManager.setAppIsolationMode(ctx, pkg, effectiveMode)
-
-                    val isSmart = (effectiveMode == AppIsolationMode.SMART_SHIELD)
-                    val isBlack = (effectiveMode == AppIsolationMode.TOTAL_BLACKOUT)
-
-                    val nextApps = apps.map {
-                        if (it.packageName != pkg) it
-                        else it.copy(
-                            wifiBlocked = wifiBlocked,
-                            dataBlocked = dataBlocked,
-                            isBlackout = isBlack,
-                            isSmartShield = isSmart,
-                            dailyQuotaBytes = quotaBytes
-                        )
-                    }
-                    apps = nextApps
                     selectedAppForPolicy = null
-                    syncService(nextApps)
 
                     val activity = ctx.findActivity()
                     if (activity != null && PrefsManager.shouldShowInterstitial(ctx)) {
                         AdMobManager.showInterstitialAd(activity)
                     }
 
-                    // Immediately enforce real network isolation via Shizuku
+                    // 3. Evaluate quota & enforce real network isolation via Shizuku on IO thread
                     coroutineScope.launch(Dispatchers.IO) {
+                        val (todayStart, todayEnd) = DataUsageManager.getTimeRange("today")
+                        val todayStats = DataUsageManager.getUidStats(ctx, uid, todayStart, todayEnd)
+                        val todayUsedBytes = todayStats.first + todayStats.second + todayStats.third + todayStats.fourth
+                        val isQuotaExceeded = (quotaBytes > 0L && todayUsedBytes >= quotaBytes)
+                        PrefsManager.setAppQuotaBlocked(ctx, pkg, isQuotaExceeded)
+
+                        val effectiveMode = if (isQuotaExceeded) AppIsolationMode.TOTAL_BLACKOUT else mode
+                        val isSmart = (mode == AppIsolationMode.SMART_SHIELD)
+                        val isBlack = (effectiveMode == AppIsolationMode.TOTAL_BLACKOUT)
+
+                        withContext(Dispatchers.Main) {
+                            val nextApps = apps.map {
+                                if (it.packageName != pkg) it
+                                else it.copy(
+                                    wifiBlocked = wifiBlocked,
+                                    dataBlocked = dataBlocked,
+                                    isBlackout = isBlack,
+                                    isSmartShield = isSmart,
+                                    dailyQuotaBytes = quotaBytes
+                                )
+                            }
+                            apps = nextApps
+                            syncService(nextApps)
+                        }
+
                         val ok = ShizukuManager.setAppIsolation(
                             packageName = pkg,
                             uid = uid,
@@ -2073,9 +2086,9 @@ fun AppRow(
                         modifier = Modifier.weight(1f, fill = false)
                     )
                 }
-                val quota = if (app.dailyQuotaBytes > 0L) app.dailyQuotaBytes else PrefsManager.getAppDailyQuota(LocalContext.current, app.packageName)
+                val quota = app.dailyQuotaBytes
                 if (quota > 0L) {
-                    val isQuotaBlocked = PrefsManager.getQuotaBlockedPackages(LocalContext.current).contains(app.packageName)
+                    val isQuotaBlocked = app.isBlackout && !PrefsManager.getBlackoutPackages(LocalContext.current).contains(app.packageName)
                     Spacer(Modifier.width(6.dp))
                     Surface(
                         shape = RoundedCornerShape(4.dp),
@@ -2094,10 +2107,10 @@ fun AppRow(
         }
 
         // Right side: Mode pill with colored dot + chevron
-        val modeColor = when (app.isolationMode) {
-            AppIsolationMode.ALLOWED -> Green
-            AppIsolationMode.SMART_SHIELD -> Yellow
-            AppIsolationMode.TOTAL_BLACKOUT -> Red
+        val modeColor = when {
+            app.isBlackout || (app.wifiBlocked && app.dataBlocked) -> Red
+            app.isSmartShield || app.wifiBlocked || app.dataBlocked -> Yellow
+            else -> Green
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -2115,10 +2128,12 @@ fun AppRow(
                 ) {
                     Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(modeColor))
                     Text(
-                        text = when (app.isolationMode) {
-                            AppIsolationMode.ALLOWED -> "Active"
-                            AppIsolationMode.SMART_SHIELD -> "Shield"
-                            AppIsolationMode.TOTAL_BLACKOUT -> "Blackout"
+                        text = when {
+                            app.isBlackout || (app.wifiBlocked && app.dataBlocked) -> "Blackout"
+                            app.isSmartShield -> "Shield"
+                            app.wifiBlocked -> "Wi-Fi Cut"
+                            app.dataBlocked -> "Data Cut"
+                            else -> "Active"
                         },
                         color = modeColor,
                         fontSize = 10.sp,
@@ -2162,7 +2177,7 @@ fun ModernToastPill(
             )
             Text(
                 text = message,
-                color = OnBg,
+                color = Color.White,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1
@@ -2313,13 +2328,13 @@ fun AppPolicyBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val ctx = LocalContext.current
     var wifiAllowed by remember(app.packageName) {
-        mutableStateOf(!PrefsManager.isAppWifiBlocked(ctx, app.packageName))
+        mutableStateOf(!app.wifiBlocked)
     }
     var dataAllowed by remember(app.packageName) {
-        mutableStateOf(!PrefsManager.isAppDataBlocked(ctx, app.packageName))
+        mutableStateOf(!app.dataBlocked)
     }
-    var currentMode by remember(app.packageName, app.isolationMode) { mutableStateOf(app.isolationMode) }
-    var dailyQuota by remember(app.packageName) { mutableStateOf(PrefsManager.getAppDailyQuota(ctx, app.packageName)) }
+    var currentMode by remember(app.packageName, app.baseIsolationMode) { mutableStateOf(app.baseIsolationMode) }
+    var dailyQuota by remember(app.packageName) { mutableStateOf(app.dailyQuotaBytes) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -2616,9 +2631,15 @@ fun AppPolicyBottomSheet(
             Spacer(Modifier.height(14.dp))
 
             // Daily Data Quota Card
-            val (todayStart, todayEnd) = remember { DataUsageManager.getTimeRange("today") }
-            val todayStats = remember(app.uid) { DataUsageManager.getUidStats(ctx, app.uid, todayStart, todayEnd) }
-            val todayUsedBytes = todayStats.first + todayStats.second + todayStats.third + todayStats.fourth
+            var todayUsedBytes by remember(app.uid) { mutableStateOf(0L) }
+            LaunchedEffect(app.uid) {
+                val used = withContext(Dispatchers.IO) {
+                    val (todayStart, todayEnd) = DataUsageManager.getTimeRange("today")
+                    val s = DataUsageManager.getUidStats(ctx, app.uid, todayStart, todayEnd)
+                    s.first + s.second + s.third + s.fourth
+                }
+                todayUsedBytes = used
+            }
 
             Surface(
                 shape = RoundedCornerShape(14.dp),
@@ -6357,7 +6378,7 @@ fun SettingsScreen(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Default.Download, null, tint = Green, modifier = Modifier.size(24.dp))
-                            Text("New Update Available! 🎉", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("New Update Available! 🎉", color = OnBg, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
                     },
                     text = {
@@ -6384,7 +6405,7 @@ fun SettingsScreen(
                                         Spacer(Modifier.height(6.dp))
                                         Text(
                                             text = info.releaseNotes.take(300),
-                                            color = Color(0xFFCAD1DB),
+                                            color = OnBg,
                                             fontSize = 11.5.sp,
                                             lineHeight = 16.sp
                                         )

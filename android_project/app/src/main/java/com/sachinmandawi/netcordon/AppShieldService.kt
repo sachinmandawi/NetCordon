@@ -45,6 +45,21 @@ class AppShieldService : Service() {
 
     private var leakCheckTicks = 0
 
+    private fun getAppLabel(packageName: String): String {
+        return try {
+            val pm = packageManager
+            val ai = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getApplicationInfo(packageName, android.content.pm.PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getApplicationInfo(packageName, 0)
+            }
+            pm.getApplicationLabel(ai).toString()
+        } catch (_: Exception) {
+            packageName.substringAfterLast('.')
+        }
+    }
+
     private fun checkBackgroundLeaks() {
         leakCheckTicks++
         // Check every 30 seconds (60 ticks of 500ms)
@@ -56,9 +71,26 @@ class AppShieldService : Service() {
         val threshold = PrefsManager.getLeakAlertThreshold(this)
         val fg = lastForegroundPackage
 
-        for (pkg in shieldedPackages) {
+        // Detect packages that actually attempted background wake/service activity in the last 30s
+        val activeBgPackages = mutableSetOf<String>()
+        try {
+            val usm = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            if (usm != null) {
+                val now = System.currentTimeMillis()
+                val events = usm.queryEvents(now - 30_000L, now)
+                val event = UsageEvents.Event()
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(event)
+                    if (event.packageName != fg && shieldedPackages.contains(event.packageName)) {
+                        activeBgPackages.add(event.packageName)
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        for (pkg in activeBgPackages) {
             if (pkg == fg) continue
-            // Increment background blocked attempt
             PrefsManager.recordBlockedAttempt(this, pkg, 1)
 
             val count = PrefsManager.getTodayBlockedAttempts(this)[pkg] ?: 0
@@ -69,13 +101,7 @@ class AppShieldService : Service() {
     }
 
     private fun dispatchLeakNotification(packageName: String, attempts: Int) {
-        val appName = try {
-            val pm = packageManager
-            val ai = pm.getApplicationInfo(packageName, 0)
-            pm.getApplicationLabel(ai).toString()
-        } catch (e: Exception) {
-            packageName.substringAfterLast('.')
-        }
+        val appName = getAppLabel(packageName)
 
         val blackoutIntent = Intent(this, AppShieldService::class.java).apply {
             action = ACTION_QUICK_BLACKOUT
@@ -135,12 +161,16 @@ class AppShieldService : Service() {
         if (unblocked.isNotEmpty()) {
             Log.d(TAG, "Midnight reset: Unblocking ${unblocked.size} apps that hit quota yesterday")
             val savedBlackout = PrefsManager.getBlackoutPackages(this)
+            val rules = mutableListOf<ShizukuManager.BatchAppRule>()
             for (pkg in unblocked) {
                 val uid = packageUidMap[pkg] ?: PrefsManager.getPackageUidMap(this)[pkg] ?: continue
                 if (!savedBlackout.contains(pkg)) {
                     val mode = PrefsManager.getAppIsolationMode(this, pkg)
-                    ShizukuManager.setAppIsolation(pkg, uid, mode, isForeground = false, blockNotifications = false)
+                    rules.add(ShizukuManager.BatchAppRule(pkg, uid, mode, isForeground = false))
                 }
+            }
+            if (rules.isNotEmpty()) {
+                ShizukuManager.applyBatchIsolationRules(rules, blockNotifications = false)
             }
         }
 
@@ -169,13 +199,7 @@ class AppShieldService : Service() {
     }
 
     private fun dispatchQuotaNotification(packageName: String, usedBytes: Long, quotaBytes: Long) {
-        val appName = try {
-            val pm = packageManager
-            val ai = pm.getApplicationInfo(packageName, 0)
-            pm.getApplicationLabel(ai).toString()
-        } catch (e: Exception) {
-            packageName.substringAfterLast('.')
-        }
+        val appName = getAppLabel(packageName)
 
         val extendIntent = Intent(this, AppShieldService::class.java).apply {
             action = ACTION_EXTEND_QUOTA
@@ -232,16 +256,14 @@ class AppShieldService : Service() {
                             Log.d(TAG, "Screen OFF detected: Enforcing strict lockdown on all shielded apps")
                             val blockNotifs = PrefsManager.isBlockNotifications(this@AppShieldService)
                             val savedBlackout = PrefsManager.getBlackoutPackages(this@AppShieldService)
+                            val batch = mutableListOf<ShizukuManager.BatchAppRule>()
                             for (pkg in shieldedPackages) {
                                 val uid = packageUidMap[pkg] ?: continue
                                 val mode = if (savedBlackout.contains(pkg)) AppIsolationMode.TOTAL_BLACKOUT else AppIsolationMode.SMART_SHIELD
-                                ShizukuManager.setAppIsolation(
-                                    packageName = pkg,
-                                    uid = uid,
-                                    mode = mode,
-                                    isForeground = false,
-                                    blockNotifications = blockNotifs
-                                )
+                                batch.add(ShizukuManager.BatchAppRule(pkg, uid, mode, isForeground = false))
+                            }
+                            if (batch.isNotEmpty()) {
+                                ShizukuManager.applyBatchIsolationRules(batch, blockNotifications = blockNotifs)
                             }
                         }
                     }
@@ -330,7 +352,7 @@ class AppShieldService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopMonitoring()
+        isRunning = false
         try {
             val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
             cm?.unregisterNetworkCallback(networkCallback)
@@ -361,9 +383,12 @@ class AppShieldService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Always satisfy Android 12-15 startForegroundService() contract within 5s
+        updateForegroundNotification()
+
         val action = intent?.action
         if (action == ACTION_QUICK_BLACKOUT) {
-            val pkg = intent?.getStringExtra(EXTRA_PACKAGE)
+            val pkg = intent.getStringExtra(EXTRA_PACKAGE)
             if (pkg != null) {
                 handler.post {
                     Log.d(TAG, "Quick Blackout triggered for $pkg")
@@ -382,7 +407,7 @@ class AppShieldService : Service() {
         }
 
         if (action == ACTION_DISMISS) {
-            val pkg = intent?.getStringExtra(EXTRA_PACKAGE)
+            val pkg = intent.getStringExtra(EXTRA_PACKAGE)
             if (pkg != null) {
                 val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 nm.cancel(pkg.hashCode())
@@ -392,7 +417,7 @@ class AppShieldService : Service() {
         }
 
         if (action == ACTION_EXTEND_QUOTA) {
-            val pkg = intent?.getStringExtra(EXTRA_PACKAGE)
+            val pkg = intent.getStringExtra(EXTRA_PACKAGE)
             if (pkg != null) {
                 handler.post {
                     Log.d(TAG, "Extend quota (+500MB) triggered for $pkg")
@@ -416,7 +441,7 @@ class AppShieldService : Service() {
             return START_STICKY
         }
 
-        if (action == ACTION_START || action == ACTION_UPDATE) {
+        if (action == ACTION_START || action == ACTION_UPDATE || action == null) {
             val packages = intent?.getStringArrayListExtra(EXTRA_PACKAGES)
             val uids = intent?.getIntegerArrayListExtra(EXTRA_UIDS)
 
@@ -433,8 +458,6 @@ class AppShieldService : Service() {
             } else {
                 loadPersistedState()
             }
-
-            updateForegroundNotification()
 
             // Immediately enforce granular restrictions in background worker thread
             handler.post {
@@ -470,6 +493,9 @@ class AppShieldService : Service() {
             val savedBlackout = PrefsManager.getBlackoutPackages(this)
             val quotaBlocked = PrefsManager.getQuotaBlockedPackages(this)
 
+            val allowedRules = mutableListOf<ShizukuManager.BatchAppRule>()
+            val restrictedRules = mutableListOf<ShizukuManager.BatchAppRule>()
+
             for (pkg in shieldedPackages) {
                 val uid = packageUidMap[pkg] ?: PrefsManager.getPackageUidMap(this)[pkg] ?: continue
                 val isForeground = (pkg == currentForeground)
@@ -478,24 +504,28 @@ class AppShieldService : Service() {
                 val isWifiBlocked = savedWifi.contains(pkg)
                 val isDataBlocked = savedData.contains(pkg)
 
-                // If blocked on the active network interface: STRICT TOTAL BLACKOUT (0 KB/s)!
-                val isBlockedOnCurrentNet = (isWifi && isWifiBlocked) || (!isWifi && isDataBlocked)
-
-                val mode = when {
-                    isBlackout -> AppIsolationMode.TOTAL_BLACKOUT
-                    isWifiBlocked && isDataBlocked -> AppIsolationMode.TOTAL_BLACKOUT
-                    isBlockedOnCurrentNet -> AppIsolationMode.TOTAL_BLACKOUT
-                    isSmartShield -> if (isForeground) AppIsolationMode.ALLOWED else AppIsolationMode.SMART_SHIELD
-                    else -> AppIsolationMode.ALLOWED
-                }
-
-                ShizukuManager.setAppIsolation(
-                    packageName = pkg,
-                    uid = uid,
-                    mode = mode,
-                    isForeground = isForeground,
-                    blockNotifications = if (mode == AppIsolationMode.ALLOWED) false else blockNotifs
+                val mode = PrefsManager.computeEffectiveIsolationMode(
+                    isBlackout = isBlackout,
+                    isSmartShield = isSmartShield,
+                    isWifiBlocked = isWifiBlocked,
+                    isDataBlocked = isDataBlocked,
+                    isWifiActive = isWifi,
+                    isForeground = isForeground
                 )
+
+                val rule = ShizukuManager.BatchAppRule(pkg, uid, mode, isForeground)
+                if (mode == AppIsolationMode.ALLOWED) {
+                    allowedRules.add(rule)
+                } else {
+                    restrictedRules.add(rule)
+                }
+            }
+
+            if (allowedRules.isNotEmpty()) {
+                ShizukuManager.applyBatchIsolationRules(allowedRules, blockNotifications = false, enableChain3 = true)
+            }
+            if (restrictedRules.isNotEmpty()) {
+                ShizukuManager.applyBatchIsolationRules(restrictedRules, blockNotifications = blockNotifs, enableChain3 = true)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in reapplyAllGranularRules", e)
@@ -528,15 +558,14 @@ class AppShieldService : Service() {
             val isWifiBlocked = savedWifi.contains(pkg)
             val isDataBlocked = savedData.contains(pkg)
 
-            val isBlockedOnCurrentNet = (isWifi && isWifiBlocked) || (!isWifi && isDataBlocked)
-
-            val mode = when {
-                isBlackout -> AppIsolationMode.TOTAL_BLACKOUT
-                isWifiBlocked && isDataBlocked -> AppIsolationMode.TOTAL_BLACKOUT
-                isBlockedOnCurrentNet -> AppIsolationMode.TOTAL_BLACKOUT
-                isSmartShield -> if (isForeground) AppIsolationMode.ALLOWED else AppIsolationMode.SMART_SHIELD
-                else -> AppIsolationMode.ALLOWED
-            }
+            val mode = PrefsManager.computeEffectiveIsolationMode(
+                isBlackout = isBlackout,
+                isSmartShield = isSmartShield,
+                isWifiBlocked = isWifiBlocked,
+                isDataBlocked = isDataBlocked,
+                isWifiActive = isWifi,
+                isForeground = isForeground
+            )
 
             ShizukuManager.setAppIsolation(
                 packageName = pkg,
@@ -553,7 +582,9 @@ class AppShieldService : Service() {
         return try {
             val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val time = System.currentTimeMillis()
-            val events = usm.queryEvents(time - 15000, time)
+            // Look back 15s on subsequent polls, or 5 minutes on cold start when lastForegroundPackage is empty
+            val lookbackMs = if (lastForegroundPackage.isEmpty()) 300_000L else 15_000L
+            val events = usm.queryEvents(time - lookbackMs, time)
             var lastEventPackage = ""
             val event = UsageEvents.Event()
 
@@ -568,9 +599,12 @@ class AppShieldService : Service() {
 
             if (lastEventPackage.isNotEmpty()) {
                 lastEventPackage
+            } else if (lastForegroundPackage.isNotEmpty()) {
+                // Keep current foreground package when user stays in the same activity for >15s
+                lastForegroundPackage
             } else {
-                val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, time - 15000, time)
-                stats?.maxByOrNull { it.lastTimeUsed }?.packageName ?: lastForegroundPackage
+                val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, time - 60_000L, time)
+                stats?.maxByOrNull { it.lastTimeUsed }?.packageName ?: ""
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error detecting foreground app", e)
@@ -580,7 +614,9 @@ class AppShieldService : Service() {
 
     private fun stopMonitoring() {
         isRunning = false
-        handler.removeCallbacks(checkForegroundRunnable)
+        if (::handler.isInitialized) {
+            handler.removeCallbacks(checkForegroundRunnable)
+        }
         val allShielded = HashSet(
             shieldedPackages +
             PrefsManager.getShieldedPackages(this) +
@@ -589,24 +625,31 @@ class AppShieldService : Service() {
             PrefsManager.getWifiBlockedPackages(this) +
             PrefsManager.getDataBlockedPackages(this)
         )
-        handler.post {
-            for (pkg in allShielded) {
-                val uid = packageUidMap[pkg] ?: PrefsManager.getPackageUidMap(this)[pkg] ?: continue
-                ShizukuManager.setAppIsolation(
-                    packageName = pkg,
-                    uid = uid,
-                    mode = AppIsolationMode.ALLOWED,
-                    isForeground = true,
-                    blockNotifications = false
-                )
-            }
-            ShizukuManager.executeCommand("cmd connectivity set-chain3-enabled false")
+        val uidMapSnapshot = HashMap(packageUidMap).apply {
+            putAll(PrefsManager.getPackageUidMap(this@AppShieldService))
         }
+
+        // Run rule restoration on a dedicated non-cancelled thread before service teardown
+        Thread {
+            try {
+                val restoreRules = allShielded.mapNotNull { pkg ->
+                    val uid = uidMapSnapshot[pkg] ?: return@mapNotNull null
+                    ShizukuManager.BatchAppRule(pkg, uid, AppIsolationMode.ALLOWED, isForeground = true)
+                }
+                if (restoreRules.isNotEmpty()) {
+                    ShizukuManager.applyBatchIsolationRules(restoreRules, blockNotifications = false, enableChain3 = false)
+                }
+                ShizukuManager.executeCommand("cmd connectivity set-chain3-enabled false")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed restoring rules on stopMonitoring", e)
+            }
+        }.start()
+
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    private fun startForegroundServiceNotification() {
+    private fun buildForegroundNotification(): Notification {
         val channelId = "netcordon_shield_channel"
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val isMin = PrefsManager.isMinNotif(this)
@@ -638,7 +681,7 @@ class AppShieldService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
+        return NotificationCompat.Builder(this, channelId)
             .setContentTitle(if (isMin) "NetCordon" else "NetCordon Active")
             .setContentText(if (isMin) "Protected" else "Background firewall and notification shield active")
             .setSmallIcon(R.drawable.ic_notification)
@@ -647,39 +690,24 @@ class AppShieldService : Service() {
             .setOngoing(true)
             .setPriority(if (isMin) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
             .build()
+    }
 
-        startForeground(101, notification)
+    private fun startForegroundServiceNotification() {
+        try {
+            val notification = buildForegroundNotification()
+            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            } else {
+                0
+            }
+            androidx.core.app.ServiceCompat.startForeground(this, 101, notification, fgsType)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground notification", e)
+        }
     }
 
     private fun updateForegroundNotification() {
-        try {
-            val channelId = "netcordon_shield_channel"
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val isMin = PrefsManager.isMinNotif(this)
-
-            val openIntent = PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-                },
-                PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val notification: Notification = NotificationCompat.Builder(this, channelId)
-                .setContentTitle(if (isMin) "NetCordon" else "NetCordon Active")
-                .setContentText(if (isMin) "Protected" else "Background firewall and notification shield active")
-                .setSmallIcon(R.drawable.ic_notification)
-                .setColor(0xFFFF5252.toInt())
-                .setContentIntent(openIntent)
-                .setOngoing(true)
-                .setPriority(if (isMin) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
-                .build()
-
-            manager.notify(101, notification)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        startForegroundServiceNotification()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

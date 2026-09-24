@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.app.Activity
 import android.content.Context
@@ -38,7 +38,7 @@ object AdMobManager {
     // Set to true to test right now with 100% instant fill!
     // Set to false when publishing for real users and real revenue.
     // =========================================================================
-    const val USE_TEST_ADS = true
+    val USE_TEST_ADS: Boolean = BuildConfig.DEBUG
 
     // Your Production IDs:
     const val PROD_REWARDED_ID     = "ca-app-pub-9886575848738700/1287079746"
@@ -60,13 +60,13 @@ object AdMobManager {
         get() = if (USE_TEST_ADS) TEST_INTERSTITIAL_ID else PROD_INTERSTITIAL_ID
     // =========================================================================
 
-    private var isInitialized = false
-    private var rewardedAd: RewardedAd? = null
-    private var isRewardedLoading = false
+    @Volatile private var isInitialized = false
+    @Volatile private var rewardedAd: RewardedAd? = null
+    @Volatile private var isRewardedLoading = false
     private val pendingRewardedCallbacks = Collections.synchronizedList(mutableListOf<() -> Unit>())
 
-    private var interstitialAd: InterstitialAd? = null
-    private var isInterstitialLoading = false
+    @Volatile private var interstitialAd: InterstitialAd? = null
+    @Volatile private var isInterstitialLoading = false
     private val pendingInterstitialCallbacks = Collections.synchronizedList(mutableListOf<() -> Unit>())
 
     /**

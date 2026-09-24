@@ -1,12 +1,11 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FirewallLogicTest {
 
-    // Simulates the exact calculation logic used in AppShieldService and MainActivity
-    // Priority: isBlackout/quota > dual-blocked > current net blocked > Smart Shield FG/BG > ALLOWED
+    // Delegates directly to the production calculation in PrefsManager.computeEffectiveIsolationMode
     private fun computeEffectiveMode(
         isWifiActive: Boolean,
         wifiBlocked: Boolean,
@@ -16,17 +15,14 @@ class FirewallLogicTest {
         isForeground: Boolean,
         baseMode: AppIsolationMode
     ): AppIsolationMode {
-        if (isBlackout || quotaExceeded) return AppIsolationMode.TOTAL_BLACKOUT
-        if (wifiBlocked && dataBlocked) return AppIsolationMode.TOTAL_BLACKOUT
-
-        val isBlockedOnCurrentNet = (isWifiActive && wifiBlocked) || (!isWifiActive && dataBlocked)
-        if (isBlockedOnCurrentNet) return AppIsolationMode.TOTAL_BLACKOUT
-
-        return if (baseMode == AppIsolationMode.SMART_SHIELD) {
-            if (isForeground) AppIsolationMode.ALLOWED else AppIsolationMode.SMART_SHIELD
-        } else {
-            AppIsolationMode.ALLOWED
-        }
+        return PrefsManager.computeEffectiveIsolationMode(
+            isBlackout = isBlackout || quotaExceeded || baseMode == AppIsolationMode.TOTAL_BLACKOUT,
+            isSmartShield = baseMode == AppIsolationMode.SMART_SHIELD,
+            isWifiBlocked = wifiBlocked,
+            isDataBlocked = dataBlocked,
+            isWifiActive = isWifiActive,
+            isForeground = isForeground
+        )
     }
 
     @Test

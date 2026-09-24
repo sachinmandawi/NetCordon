@@ -485,7 +485,7 @@ export default function App() {
   const [lockOnScreenOff, setLockOnScreenOff] = useState(true);
   const [analyticsPeriod, setAnalyticsPeriod] = useState('today');
   const [blackoutApps, setBlackoutApps]       = useState(new Set(['com.pubg.imobile']));
-  const [darkMode, setDarkMode]               = useState(() => localStorage.getItem('netcordon_dark_mode') === 'true');
+  const [darkMode, setDarkMode]               = useState(() => localStorage.getItem('netcordon_dark_mode') !== 'false');
 
   useEffect(() => {
     if (darkMode) {
@@ -507,16 +507,11 @@ export default function App() {
   const [endMinStr,    setEndMinStr]    = useState('00');
   const [endAmPm,      setEndAmPm]      = useState('AM');
   const [newMode,  setNewMode]  = useState('TOTAL_BLACKOUT');
-  const [newDays,  setNewDays]  = useState([1,2,3,4,5,6,7]);
-  const [selectedScheduleApps, setSelectedScheduleApps] = useState([]);
   const [scheduleForAppConfig, setScheduleForAppConfig] = useState(null);
   const [selectedAppForPolicy, setSelectedAppForPolicy] = useState(null);
 
   const openAddCustomSchedule = () => {
-    const initialMode = 'TOTAL_BLACKOUT';
-    setNewMode(initialMode);
-    const blackoutPkgs = apps.filter(a => blackoutApps.has(a.id)).map(a => a.id);
-    setSelectedScheduleApps(blackoutPkgs);
+    setNewMode('TOTAL_BLACKOUT');
     setShowAddCustomSchedule(true);
   };
   const [touchStart, setTouchStart]           = useState(0);
@@ -1204,8 +1199,6 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setNewMode('TOTAL_BLACKOUT');
-                        const blackoutPkgs = apps.filter(a => blackoutApps.has(a.id)).map(a => a.id);
-                        setSelectedScheduleApps(blackoutPkgs);
                       }}
                       style={{
                         flex:1, padding:9, borderRadius:10, cursor:'pointer',
@@ -1221,8 +1214,6 @@ export default function App() {
                       type="button"
                       onClick={() => {
                         setNewMode('SMART_SHIELD');
-                        const smartPkgs = apps.filter(a => (a.wifiBlocked || a.dataBlocked) && !blackoutApps.has(a.id)).map(a => a.id);
-                        setSelectedScheduleApps(smartPkgs);
                       }}
                       style={{
                         flex:1, padding:9, borderRadius:10, cursor:'pointer',

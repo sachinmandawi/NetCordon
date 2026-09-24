@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import org.json.JSONArray
 import org.json.JSONObject
@@ -70,11 +70,19 @@ class ProfileAndScheduleTest {
 
     @Test
     fun testAppIsolationModeEnum() {
-        val modes = AppIsolationMode.values()
+        val modes = AppIsolationMode.entries
         assertEquals(3, modes.size)
         assertTrue(modes.contains(AppIsolationMode.ALLOWED))
         assertTrue(modes.contains(AppIsolationMode.SMART_SHIELD))
         assertTrue(modes.contains(AppIsolationMode.TOTAL_BLACKOUT))
+    }
+
+    @Test
+    fun testAppUpdateVersionComparison() {
+        assertTrue(AppUpdateManager.isVersionNewer("v1.0.1", "1.0.0"))
+        assertTrue(AppUpdateManager.isVersionNewer("2.0.0", "v1.9.9"))
+        assertEquals(false, AppUpdateManager.isVersionNewer("1.0.0", "1.0.0"))
+        assertEquals(false, AppUpdateManager.isVersionNewer("0.9.5", "1.0.0"))
     }
 
     @Test

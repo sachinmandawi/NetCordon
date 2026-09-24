@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import androidx.compose.ui.graphics.ImageBitmap
 
@@ -15,6 +15,11 @@ data class AppInfo(
     var dailyQuotaBytes: Long = 0L
 ) {
     val isShielded: Boolean get() = isSmartShield || wifiBlocked || dataBlocked || isBlackout
+    val baseIsolationMode: AppIsolationMode get() = when {
+        isBlackout -> AppIsolationMode.TOTAL_BLACKOUT
+        isSmartShield -> AppIsolationMode.SMART_SHIELD
+        else -> AppIsolationMode.ALLOWED
+    }
     val isolationMode: AppIsolationMode get() = when {
         isBlackout -> AppIsolationMode.TOTAL_BLACKOUT
         isSmartShield -> AppIsolationMode.SMART_SHIELD

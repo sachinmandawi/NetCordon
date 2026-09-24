@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.app.usage.NetworkStats
 import android.app.usage.NetworkStatsManager
@@ -208,6 +208,7 @@ object DataUsageManager {
             }
         }
 
+        val countedUids = HashSet<Int>()
         for (app in apps) {
             val usageArr = uidUsageMap[app.uid] ?: LongArray(4)
             val rxW = usageArr[0]
@@ -227,8 +228,10 @@ object DataUsageManager {
                 isWifiBlocked = app.wifiBlocked,
                 isDataBlocked = app.dataBlocked
             )
-            aggregateWifi += (rxW + txW)
-            aggregateMobile += (rxM + txM)
+            if (countedUids.add(app.uid)) {
+                aggregateWifi += (rxW + txW)
+                aggregateMobile += (rxM + txM)
+            }
 
             if (appUsage.totalBytes > 0 || isAppRestricted) {
                 statsList.add(appUsage)
@@ -240,39 +243,34 @@ object DataUsageManager {
 
         // Calculate estimated background data saved by blocked apps (including Smart Shield)
         val blockedApps = apps.filter { it.wifiBlocked || it.dataBlocked || it.isBlackout || it.isSmartShield }
-        val blockedCount = blockedApps.size
-        
+
         // Estimated savings based on restricted background drain & real caught leak attempts
         var estimatedSavedBytes = 0L
         val leakAttemptsMap = PrefsManager.getTodayBlockedAttempts(context)
+        val countedSavedUids = HashSet<Int>()
         for (blocked in blockedApps) {
-            val usage = statsList.firstOrNull { it.uid == blocked.uid }
-            val baseUsage = usage?.totalBytes ?: 0L
             val appLeakAttempts = leakAttemptsMap[blocked.packageName] ?: 0
-            val estimatedAppSaved = if (baseUsage > 0) {
-                (baseUsage * 0.25).toLong()
-            } else if (appLeakAttempts > 0) {
-                appLeakAttempts * 3L * 1024 * 1024
+            val usage = if (countedSavedUids.add(blocked.uid)) {
+                statsList.firstOrNull { it.uid == blocked.uid }?.totalBytes ?: 0L
             } else {
-                12L * 1024 * 1024
+                0L
+            }
+            val estimatedAppSaved = when {
+                usage > 0L -> (usage * 0.25).toLong()
+                appLeakAttempts > 0 -> appLeakAttempts * 150L * 1024L
+                else -> 0L
             }
             estimatedSavedBytes += estimatedAppSaved
         }
 
-        // Calculate blocked background pings: use real detected leak attempts if available
+        // Calculate blocked background pings: use real detected leak attempts
         val realBlockedAttempts = PrefsManager.getTodayTotalBlockedAttempts(context)
-        val hoursElapsed = maxOf(1L, (endTime - startTime) / (3600 * 1000))
-        val blockedPings = if (realBlockedAttempts > 0) {
-            realBlockedAttempts
-        } else {
-            (blockedCount * hoursElapsed * 18).toInt()
-        }
 
         return OverallNetworkStats(
             totalWifi = aggregateWifi,
             totalMobile = aggregateMobile,
             totalSavedBytes = estimatedSavedBytes,
-            blockedPingsCount = blockedPings,
+            blockedPingsCount = realBlockedAttempts,
             appStats = statsList
         )
     }

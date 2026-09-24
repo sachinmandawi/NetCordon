@@ -1,4 +1,4 @@
-﻿package com.sachinmandawi.netcordon
+package com.sachinmandawi.netcordon
 
 import android.content.pm.PackageManager
 import android.os.Build
@@ -40,31 +40,28 @@ object ShizukuManager {
         }
     }
 
+    private val newProcessMethod by lazy {
+        Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java,
+            Array<String>::class.java,
+            String::class.java
+        ).apply { isAccessible = true }
+    }
+
     /**
      * Executes ADB shell command via Shizuku binder or Root shell fallback.
      */
     fun executeCommand(command: String, callback: ((Boolean, String) -> Unit)? = null): Boolean {
         return try {
             val process: Process = if (hasShizukuPermission()) {
-                val newProcessMethod = Shizuku::class.java.getDeclaredMethod(
-                    "newProcess",
-                    Array<String>::class.java,
-                    Array<String>::class.java,
-                    String::class.java
-                ).apply { isAccessible = true }
                 newProcessMethod.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
             } else {
                 Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
             }
 
-            val finished = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                process.waitFor(2, java.util.concurrent.TimeUnit.SECONDS)
-            } else {
-                process.waitFor() == 0
-            }
-
             val output = StringBuilder()
-            if (finished) {
+            val readerThread = Thread {
                 try {
                     val outText = process.inputStream.bufferedReader().use { it.readText() }
                     if (outText.isNotEmpty()) output.append(outText)
@@ -72,15 +69,27 @@ object ShizukuManager {
                         val errText = process.errorStream.bufferedReader().use { it.readText() }
                         if (errText.isNotEmpty()) output.append(errText)
                     }
-                } catch (e: Exception) {
-                    // stream closed
+                } catch (_: Exception) {
                 }
+            }.apply {
+                isDaemon = true
+                start()
+            }
+
+            val finished = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                process.waitFor(4, java.util.concurrent.TimeUnit.SECONDS)
             } else {
+                process.waitFor() == 0
+            }
+
+            if (!finished) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     process.destroyForcibly()
                 } else {
                     process.destroy()
                 }
+            } else {
+                readerThread.join(500)
             }
 
             val exitCode = if (finished) process.exitValue() else -1
@@ -100,11 +109,125 @@ object ShizukuManager {
      * and grants required system privileges (Usage Stats, AppOps).
      */
     fun initFirewallFramework(packageName: String? = null): Boolean {
+        val cmds = mutableListOf<String>()
         if (!packageName.isNullOrBlank()) {
-            executeCommand("cmd appops set $packageName GET_USAGE_STATS allow")
-            executeCommand("pm grant $packageName android.permission.PACKAGE_USAGE_STATS")
+            cmds.add("cmd appops set $packageName GET_USAGE_STATS allow")
+            cmds.add("pm grant $packageName android.permission.PACKAGE_USAGE_STATS")
         }
-        return executeCommand("cmd connectivity set-chain3-enabled true")
+        cmds.add("cmd connectivity set-chain3-enabled true")
+        return executeCommand(cmds.joinToString("; "))
+    }
+
+    data class BatchAppRule(
+        val packageName: String,
+        val uid: Int,
+        val mode: AppIsolationMode,
+        val isForeground: Boolean = false
+    )
+
+    fun buildAppIsolationCommands(
+        packageName: String,
+        uid: Int,
+        mode: AppIsolationMode,
+        isForeground: Boolean = false,
+        blockNotifications: Boolean = true,
+        includeChain3Enable: Boolean = true
+    ): List<String> {
+        val commands = mutableListOf<String>()
+
+        when (mode) {
+            AppIsolationMode.TOTAL_BLACKOUT -> {
+                if (includeChain3Enable) {
+                    commands.add("cmd connectivity set-chain3-enabled true")
+                }
+                commands.add("cmd connectivity set-package-networking-enabled false $packageName")
+                commands.add("cmd netpolicy add restrict-background-blacklist $uid")
+                commands.add("cmd appops set $packageName RUN_IN_BACKGROUND ignore")
+                commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND ignore")
+                commands.add("cmd appops set $packageName WAKE_LOCK ignore")
+                commands.add("am set-standby-bucket $packageName restricted")
+                commands.add("cmd deviceidle whitelist -$packageName")
+
+                if (blockNotifications) {
+                    commands.add("cmd appops set $packageName POST_NOTIFICATION ignore")
+                    commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS ignore")
+                } else {
+                    commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
+                    commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS allow")
+                }
+
+                commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; iptables -I OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -I OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
+            }
+            AppIsolationMode.SMART_SHIELD -> {
+                if (isForeground) {
+                    commands.add("cmd connectivity set-package-networking-enabled true $packageName")
+                    commands.add("cmd netpolicy set-uid-policy $uid 0")
+                    commands.add("cmd netpolicy remove restrict-background-blacklist $uid")
+                    commands.add("cmd appops set $packageName RUN_IN_BACKGROUND allow")
+                    commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow")
+                    commands.add("cmd appops set $packageName WAKE_LOCK allow")
+                    commands.add("am set-standby-bucket $packageName active")
+                    commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
+                    commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS allow")
+                    commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
+                } else {
+                    commands.add("cmd connectivity set-package-networking-enabled true $packageName")
+                    commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
+                    commands.add("cmd netpolicy set-uid-policy $uid 1")
+                    commands.add("cmd netpolicy add restrict-background-blacklist $uid")
+                    commands.add("cmd appops set $packageName RUN_IN_BACKGROUND ignore")
+                    commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND ignore")
+                    commands.add("cmd appops set $packageName WAKE_LOCK ignore")
+                    commands.add("am set-standby-bucket $packageName restricted")
+                    commands.add("cmd deviceidle whitelist -$packageName")
+                    if (blockNotifications) {
+                        commands.add("cmd appops set $packageName POST_NOTIFICATION ignore")
+                        commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS ignore")
+                    } else {
+                        commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
+                        commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS allow")
+                    }
+                }
+            }
+            AppIsolationMode.ALLOWED -> {
+                commands.add("cmd connectivity set-package-networking-enabled true $packageName")
+                commands.add("cmd netpolicy set-uid-policy $uid 0")
+                commands.add("cmd netpolicy remove restrict-background-blacklist $uid")
+                commands.add("cmd appops set $packageName RUN_IN_BACKGROUND allow")
+                commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow")
+                commands.add("cmd appops set $packageName WAKE_LOCK allow")
+                commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
+                commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS allow")
+                commands.add("am set-standby-bucket $packageName active")
+                commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
+            }
+        }
+        return commands
+    }
+
+    fun applyBatchIsolationRules(
+        rules: List<BatchAppRule>,
+        blockNotifications: Boolean = true,
+        enableChain3: Boolean = true
+    ): Boolean {
+        if (rules.isEmpty()) return true
+        val allCommands = mutableListOf<String>()
+        if (enableChain3) {
+            allCommands.add("cmd connectivity set-chain3-enabled true")
+        }
+        for (rule in rules) {
+            allCommands.addAll(
+                buildAppIsolationCommands(
+                    packageName = rule.packageName,
+                    uid = rule.uid,
+                    mode = rule.mode,
+                    isForeground = rule.isForeground,
+                    blockNotifications = blockNotifications,
+                    includeChain3Enable = false
+                )
+            )
+        }
+        return executeCommand(allCommands.joinToString("; "))
     }
 
     /**
@@ -122,82 +245,15 @@ object ShizukuManager {
         isForeground: Boolean = false,
         blockNotifications: Boolean = true
     ): Boolean {
-        val commands = mutableListOf<String>()
-
-        when (mode) {
-            AppIsolationMode.TOTAL_BLACKOUT -> {
-                // Android 11+ Native Chain-3 Firewall (Instant 0 KB/s in foreground & background)
-                commands.add("cmd connectivity set-chain3-enabled true")
-                commands.add("cmd connectivity set-package-networking-enabled false $packageName")
-
-                // NetPolicy Restrictions
-                commands.add("cmd netpolicy add restrict-background-blacklist $uid")
-
-                // AppOps execution lockdown
-                commands.add("cmd appops set $packageName RUN_IN_BACKGROUND ignore")
-                commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND ignore")
-                commands.add("cmd appops set $packageName WAKE_LOCK ignore")
-                commands.add("am set-standby-bucket $packageName restricted")
-                commands.add("cmd deviceidle whitelist -$packageName")
-
-                // Mute notifications
-                if (blockNotifications) {
-                    commands.add("cmd appops set $packageName POST_NOTIFICATION ignore")
-                    commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS ignore")
-                }
-
-                // IPTables & IP6Tables root drop fallback (Dual-stack IPv4/IPv6 protection)
-                commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; iptables -I OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -I OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
-            }
-            AppIsolationMode.SMART_SHIELD -> {
-                if (isForeground) {
-                    // App is active on screen: Instantly restore full connectivity
-                    commands.add("cmd connectivity set-package-networking-enabled true $packageName")
-                    commands.add("cmd netpolicy set-uid-policy $uid 0")
-                    commands.add("cmd netpolicy remove restrict-background-blacklist $uid")
-                    commands.add("cmd appops set $packageName RUN_IN_BACKGROUND allow")
-                    commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow")
-                    commands.add("cmd appops set $packageName WAKE_LOCK allow")
-                    commands.add("am set-standby-bucket $packageName active")
-                    commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
-                    commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
-                } else {
-                    // App is closed / in background: Freeze network and wakeups (Single Tick ✓)
-                    // Keep networking enabled in connectivity manager so foreground launch never suffers socket failure
-                    commands.add("cmd connectivity set-package-networking-enabled true $packageName")
-                    // Clean up any lingering full drop rules from previous Total Blackout
-                    commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
-                    // Native Android background restrict (kernel drops packets ONLY when backgrounded)
-                    commands.add("cmd netpolicy set-uid-policy $uid 1")
-                    commands.add("cmd netpolicy add restrict-background-blacklist $uid")
-                    commands.add("cmd appops set $packageName RUN_IN_BACKGROUND ignore")
-                    commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND ignore")
-                    commands.add("cmd appops set $packageName WAKE_LOCK ignore")
-                    commands.add("am set-standby-bucket $packageName restricted")
-                    commands.add("cmd deviceidle whitelist -$packageName")
-                    if (blockNotifications) {
-                        commands.add("cmd appops set $packageName POST_NOTIFICATION ignore")
-                        commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS ignore")
-                    }
-                }
-            }
-            AppIsolationMode.ALLOWED -> {
-                // Restore 100% Unrestricted Connectivity
-                commands.add("cmd connectivity set-package-networking-enabled true $packageName")
-                commands.add("cmd netpolicy set-uid-policy $uid 0")
-                commands.add("cmd netpolicy remove restrict-background-blacklist $uid")
-                commands.add("cmd appops set $packageName RUN_IN_BACKGROUND allow")
-                commands.add("cmd appops set $packageName RUN_ANY_IN_BACKGROUND allow")
-                commands.add("cmd appops set $packageName WAKE_LOCK allow")
-                commands.add("cmd appops set $packageName POST_NOTIFICATION allow")
-                commands.add("cmd appops set $packageName ACCESS_NOTIFICATIONS allow")
-                commands.add("am set-standby-bucket $packageName active")
-                commands.add("iptables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null; ip6tables -D OUTPUT -m owner --uid-owner $uid -j DROP 2>/dev/null")
-            }
-        }
-
-        val combined = commands.joinToString("; ")
-        return executeCommand(combined)
+        val commands = buildAppIsolationCommands(
+            packageName = packageName,
+            uid = uid,
+            mode = mode,
+            isForeground = isForeground,
+            blockNotifications = blockNotifications,
+            includeChain3Enable = true
+        )
+        return executeCommand(commands.joinToString("; "))
     }
 
     /**
