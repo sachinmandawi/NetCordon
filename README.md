@@ -47,5 +47,15 @@ cd NetCordon/android_project
 ---
 
 <div align="center">
-  <sub>Developed with ❤️ by <a href="https://github.com/sachinmandawi">Sachin Mandavi</a> · Licensed under <a href="LICENSE">MIT</a></sub>
+  <sub>Developed with ❤️ by <a href="https://github.com/sachinmandawi">Sachin Mandawi</a> · Licensed under <a href="LICENSE">MIT</a></sub>
 </div>
+
+---
+
+## 👤 Author
+
+**Sachin Mandawi** — *Software & Android Developer*
+- 🌐 **Official Website & Portfolio:** [https://sachinmandawi.me](https://sachinmandawi.me)
+- 💻 **GitHub:** [@sachinmandawi](https://github.com/sachinmandawi)
+- 📷 **Instagram:** [@sachinmandawi](https://www.instagram.com/sachinmandawi)
+- 📌 **Pinterest:** [in.pinterest.com/sachinmandawi](https://in.pinterest.com/sachinmandawi/)
